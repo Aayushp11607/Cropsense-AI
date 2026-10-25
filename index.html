@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#1e633f"><title>CropSense AI | Farmer Dashboard</title><link rel="stylesheet" href="style.css">
+</head><body>
+<header class="topbar"><div class="logo">🌱</div><div><h1>CropSense <span>AI</span></h1><p>Know your field. Choose the right crop.</p></div><span id="status" class="status">Demo data</span></header>
+<main class="wrap">
+<section class="hero"><div><small>FARMER FIELD ASSISTANT</small><h2>Your field, made easier to understand.</h2><p>Review soil moisture, air conditions, scan points and preliminary crop suggestions in one place.</p></div><div class="heroemoji">🌾</div></section>
+<section class="sectionhead"><div><small>FIELD OVERVIEW</small><h2>Today's field data</h2></div><label>Field name<input id="fieldName" value="My Field" maxlength="40"></label></section>
+<section class="metrics">
+<article><div class="icon">💧 <small>SOIL</small></div><p>Soil moisture</p><strong><span id="moisture">35</span><em>%</em></strong><p id="moistureNote" class="muted">Moderate-low</p><div class="bar"><span id="moistureBar" style="width:35%"></span></div></article>
+<article><div class="icon">🌡️ <small>AIR</small></div><p>Temperature</p><strong><span id="temp">27.8</span><em>°C</em></strong><p class="muted">Measured by DHT22</p><div class="bar orange"><span id="tempBar" style="width:55%"></span></div></article>
+<article><div class="icon">☁️ <small>AIR</small></div><p>Air humidity</p><strong><span id="humidity">54.2</span><em>%</em></strong><p class="muted">Relative humidity</p><div class="bar blue"><span id="humidityBar" style="width:54%"></span></div></article>
+</section>
+<section class="columns">
+<article class="panel"><div class="panelhead"><div><small>MULTI-POINT SCAN</small><h2>Check different places</h2></div><span class="pill" id="scanCount">3/4 points</span></div><p class="muted">Move the moisture probe manually between marked places. Save a reading at each point to compare variation across your field.</p><div id="points" class="points"></div><div class="buttons"><button id="savePoint">＋ Save current reading</button><button class="secondary" id="resetPoints">Reset points</button></div><p id="scanMessage" class="helper">Demo readings shown. Connect the ESP32 for real sensor data.</p></article>
+<article class="panel"><div class="panelhead"><div><small>CROP GUIDANCE</small><h2>Preliminary suggestions</h2></div><span class="leaf">🌱</span></div><p class="muted">Illustrative prototype ranking based on moisture and temperature only; not validated agricultural advice.</p><div id="crops"></div><div class="notice"><b>Important:</b> Soil pH, soil type, season, location, irrigation and crop variety are not measured here. Confirm choices with a local agriculture officer or Krishi Vigyan Kendra.</div></article>
+</section>
+<section class="columns">
+<article class="panel"><small>FIELD SUMMARY</small><h2>What the readings mean</h2><div id="summary"></div></article>
+<article class="panel"><small>PLANT CARE</small><h2>Helpful next steps</h2>
+<div class="care"><span>💧</span><div><b>Check moisture before watering</b><p>Probe a few places, not just the field edge. Avoid watering only because the surface looks dry.</p></div></div>
+<div class="care"><span>🌤️</span><div><b>Track changing conditions</b><p>Readings change with sunlight, rain, irrigation and time of day.</p></div></div>
+<div class="care"><span>🧪</span><div><b>Test soil before planting</b><p>Use a soil-testing service for pH and nutrients before fertilizer decisions.</p></div></div>
+<div class="care"><span>👩‍🌾</span><div><b>Ask a local expert</b><p>Choose crops suited to your season, soil, water availability and local guidance.</p></div></div>
+</article></section>
+<section class="panel connection"><small>DEVICE CONNECTION</small><h2>Connect your ESP32</h2><p class="muted">When Wi-Fi firmware is ready, enter its local data URL. Your phone and ESP32 must be on the same Wi-Fi network or connected through the ESP32 access point.</p>
+<div class="connect"><label>ESP32 data URL<input id="deviceUrl" placeholder="http://192.168.4.1/data"></label><button id="connect">Connect &amp; refresh</button><button id="demo" class="secondary">Use demo data</button></div><p id="deviceMessage" class="helper">Not connected. Dashboard currently uses sample data.</p>
+<details><summary>Expected data format</summary><pre>{"moisture_raw":2470,"moisture_percent":35,"temperature":27.8,"humidity":54.2,"point":"A"}</pre><p class="helper">The current sensor sketch prints to Serial Monitor only. We'll add the ESP32 Wi-Fi JSON endpoint next. Browser access may require a local web server and CORS settings.</p></details></section>
+<footer><span>CropSense AI · Prototype v2</span><span>Readings and suggestions are experimental.</span></footer>
+</main><script src="app.js"></script></body></html>

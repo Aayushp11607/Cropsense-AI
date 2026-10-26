@@ -8,10 +8,10 @@
 
   <meta
     name="description"
-    content="CropSense AI helps farmers explore soil moisture, environmental readings, and preliminary crop suggestions."
+    content="CropSense AI by Team Digital Aura helps farmers explore field sensor readings and preliminary crop suggestions."
   >
 
-  <title>CropSense AI | Farmer Dashboard</title>
+  <title>CropSense AI | Better Choice, Greener Tomorrow</title>
 
   <link rel="stylesheet" href="style.css">
 </head>
@@ -24,7 +24,7 @@
 
     <div>
       <h1>CropSense <span>AI</span></h1>
-      <p>Know your field. Choose the right crop.</p>
+      <p>Better Choice, Greener Tomorrow.</p>
     </div>
 
     <span id="status" class="status">Demo data</span>
@@ -35,13 +35,17 @@
     <!-- HERO SECTION -->
     <section class="hero">
       <div>
-        <small>FARMER FIELD ASSISTANT</small>
+        <small>TEAM DIGITAL AURA PRESENTS</small>
 
         <h2>Your field, made easier to understand.</h2>
 
         <p>
-          Review soil moisture, air conditions, scan points, and
-          preliminary crop suggestions in one place.
+          Explore field readings, compare preliminary crop suggestions,
+          and use technology to support more informed farming decisions.
+        </p>
+
+        <p class="hero-tagline">
+          Better Choice, Greener Tomorrow.
         </p>
       </div>
 
@@ -70,9 +74,7 @@
     <section class="metrics">
 
       <article>
-        <div class="icon">
-          💧 <small>SOIL</small>
-        </div>
+        <div class="icon">💧 <small>SOIL</small></div>
 
         <p>Soil moisture</p>
 
@@ -88,9 +90,7 @@
       </article>
 
       <article>
-        <div class="icon">
-          🌡️ <small>AIR</small>
-        </div>
+        <div class="icon">🌡️ <small>AIR</small></div>
 
         <p>Temperature</p>
 
@@ -106,9 +106,7 @@
       </article>
 
       <article>
-        <div class="icon">
-          ☁️ <small>AIR</small>
-        </div>
+        <div class="icon">☁️ <small>AIR</small></div>
 
         <p>Air humidity</p>
 
@@ -128,7 +126,7 @@
     <!-- FIELD SCANNER AND CROP SUGGESTIONS -->
     <section class="columns">
 
-      <!-- FIELD SCANNER -->
+      <!-- MULTI-POINT FIELD SCANNER -->
       <article class="panel">
 
         <div class="panelhead">
@@ -141,7 +139,7 @@
         </div>
 
         <p class="muted">
-          Move the moisture probe manually between marked places.
+          Move the soil moisture probe manually between marked places.
           Save a reading at each point to compare variation across
           your field.
         </p>
@@ -153,18 +151,14 @@
             ＋ Save current reading
           </button>
 
-          <button
-            id="resetPoints"
-            class="secondary"
-            type="button"
-          >
+          <button id="resetPoints" class="secondary" type="button">
             Reset points
           </button>
         </div>
 
         <p id="scanMessage" class="helper">
-          Demo readings shown. Connect the ESP32 or wait for
-          Firebase readings to scan your field.
+          Waiting for readings. Sample readings may appear before
+          a live sensor connection is established.
         </p>
 
       </article>
@@ -182,19 +176,21 @@
         </div>
 
         <p class="muted">
-          Crop rankings are illustrative prototype matches based
-          on moisture and temperature only. They are not validated
+          Explore the highest-ranked crops in each category.
+          Scroll horizontally to see more suggestions.
+          Rankings are preliminary prototype matches, not validated
           agricultural recommendations.
         </p>
 
-        <!-- app.js inserts the crop database here -->
+        <!-- app.js creates horizontal crop categories here -->
         <div id="crops"></div>
 
         <div class="notice">
           <b>Important:</b>
-          Soil pH, soil type, season, location, rainfall,
-          irrigation, and crop variety are not fully evaluated.
-          Confirm crop choices with a local agriculture officer
+          Current rankings use soil moisture and air temperature
+          only. Soil pH, soil type, location, season, rainfall,
+          irrigation and crop variety are not fully evaluated.
+          Confirm planting decisions with a local agriculture officer
           or Krishi Vigyan Kendra.
         </div>
 
@@ -209,7 +205,6 @@
         <small>FIELD SUMMARY</small>
         <h2>What the readings mean</h2>
 
-        <!-- app.js inserts the sensor summary here -->
         <div id="summary"></div>
       </article>
 
@@ -233,7 +228,7 @@
           <div>
             <b>Track changing conditions</b>
             <p>
-              Readings change with sunlight, rain, irrigation,
+              Readings change with sunlight, rain, irrigation
               and time of day.
             </p>
           </div>
@@ -256,7 +251,7 @@
             <b>Ask a local expert</b>
             <p>
               Choose crops suited to your season, soil,
-              water availability, and local guidance.
+              water availability and local agricultural guidance.
             </p>
           </div>
         </div>
@@ -272,10 +267,10 @@
       <h2>Connect your ESP32</h2>
 
       <p class="muted">
-        Your ESP32 sends sensor readings to Firebase.
-        You can also connect directly to its local data endpoint
-        when the ESP32 and your browser are on a compatible network.
-        Direct access may require correct CORS settings.
+        Your ESP32 sends sensor readings to Firebase. You can also
+        connect directly to its local data endpoint when your browser
+        and ESP32 can communicate over the network. Direct access may
+        require correct CORS settings.
       </p>
 
       <div class="connect">
@@ -293,19 +288,14 @@
           Connect &amp; refresh
         </button>
 
-        <button
-          id="demo"
-          class="secondary"
-          type="button"
-        >
+        <button id="demo" class="secondary" type="button">
           Use demo data
         </button>
 
       </div>
 
       <p id="deviceMessage" class="helper">
-        Waiting for a live Firebase reading or direct ESP32
-        connection. Sample values may appear until live data arrives.
+        Waiting for a live Firebase reading or direct ESP32 connection.
       </p>
 
       <details>
@@ -320,26 +310,108 @@
 }</pre>
 
         <p class="helper">
-          The direct connection requires the ESP32 firmware to
-          provide a JSON endpoint at the entered URL. Firebase
-          integration is handled separately by firebase-live.js.
+          The direct connection requires the ESP32 firmware to provide
+          a JSON endpoint at the entered URL. Firebase live updates
+          are handled separately by firebase-live.js.
         </p>
       </details>
 
     </section>
 
+    <!-- TEAM DIGITAL AURA -->
+    <section class="panel team-section">
+
+      <small>THE PEOPLE BEHIND THE PROJECT</small>
+      <h2>Meet Team Digital Aura</h2>
+
+      <p class="muted">
+        We are developing CropSense AI to help farmers explore crop
+        options using field readings and accessible technology.
+      </p>
+
+      <div class="team-grid">
+
+        <article class="team-member">
+          <div class="team-avatar">AP</div>
+          <h3>Aayush Pranav Patil</h3>
+          <p>Team Member</p>
+        </article>
+
+        <article class="team-member">
+          <div class="team-avatar">SR</div>
+          <h3>Saurish Rohan Newadkar</h3>
+          <p>Team Member</p>
+        </article>
+
+        <article class="team-member">
+          <div class="team-avatar">HP</div>
+          <h3>Hanshal Dhananjay Patil</h3>
+          <p>Team Member</p>
+        </article>
+
+      </div>
+
+      <!-- PROJECT CONTRIBUTIONS -->
+      <div class="contributions">
+
+        <h3>Our Contributions</h3>
+
+        <p>
+          As Team Digital Aura, we are working to make crop exploration
+          more accessible to farmers through a technology-based
+          prototype.
+        </p>
+
+        <ul>
+          <li>
+            Developed a prototype for preliminary crop suggestions.
+          </li>
+          <li>
+            Integrated ESP32-based soil moisture and air-condition sensing.
+          </li>
+          <li>
+            Connected Firebase to receive and display live sensor data.
+          </li>
+          <li>
+            Designed a dashboard to help users explore crop options
+            and understand field readings.
+          </li>
+          <li>
+            Encouraged informed farming decisions using field data
+            and local agricultural guidance.
+          </li>
+        </ul>
+
+        <!-- SMALL BRAND LOGO -->
+        <div class="contribution-logo">
+          <img
+            src="assets/cropsense-logo.png"
+            alt="CropSense AI startup logo"
+            class="small-brand-logo"
+            loading="lazy"
+          >
+        </div>
+
+        <p class="team-tagline">
+          Better Choice, Greener Tomorrow.
+        </p>
+
+      </div>
+
+    </section>
+
     <!-- FOOTER -->
     <footer>
-      <span>CropSense AI · Prototype v2</span>
-      <span>Readings and suggestions are experimental.</span>
+      <span>CropSense AI · Team Digital Aura</span>
+      <span>Prototype · Crop matches are experimental.</span>
     </footer>
 
   </main>
 
-  <!-- Load the dashboard logic first -->
+  <!-- Dashboard JavaScript -->
   <script src="app.js"></script>
 
-  <!-- Then initialize Firebase live updates -->
+  <!-- Firebase live sensor updates -->
   <script type="module" src="firebase-live.js"></script>
 
 </body>

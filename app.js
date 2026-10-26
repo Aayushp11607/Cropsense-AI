@@ -1,8 +1,9 @@
 
+
 "use strict";
 
 // ==========================================
-// 1. DOM HELPERS AND INITIAL SENSOR DATA
+// 1. INITIAL DATA
 // ==========================================
 
 const $ = id => document.getElementById(id);
@@ -62,11 +63,12 @@ function moistureStatus(value) {
 
 // ==========================================
 // 3. CROP DATABASE
-// Target values are provisional prototype values,
-// not scientifically validated crop requirements.
+// Targets are illustrative prototype values.
+// They are not validated crop requirements.
 // ==========================================
 
 const cropDatabase = [
+
   // Cereals and millets
   {name:"Rice",emoji:"🌾",targetM:75,targetT:28,category:"Cereal"},
   {name:"Wheat",emoji:"🌾",targetM:40,targetT:22,category:"Cereal"},
@@ -130,7 +132,7 @@ const cropDatabase = [
   {name:"Sweet Potato",emoji:"🍠",targetM:45,targetT:25,category:"Vegetable"},
   {name:"Tapioca (Cassava)",emoji:"🌱",targetM:35,targetT:27,category:"Root crop"},
 
-  // Fruits
+  // Fruits and plantation crops
   {name:"Banana",emoji:"🍌",targetM:65,targetT:27,category:"Fruit"},
   {name:"Mango",emoji:"🥭",targetM:35,targetT:28,category:"Fruit"},
   {name:"Sweet Orange",emoji:"🍊",targetM:45,targetT:25,category:"Fruit"},
@@ -155,9 +157,7 @@ const cropDatabase = [
 ];
 
 // ==========================================
-// 4. CROP MATCH SCORE
-// This is a prototype score, not a real-world
-// prediction of crop suitability.
+// 4. PROTOTYPE MATCH SCORE
 // ==========================================
 
 function score(m, t, targetM, targetT) {
@@ -182,7 +182,22 @@ function score(m, t, targetM, targetT) {
 }
 
 // ==========================================
-// 5. MAIN DASHBOARD RENDER FUNCTION
+// 5. CROP CATEGORIES
+// Up to 10 highest-scoring crops per row
+// ==========================================
+
+const cropCategories = {
+  "Cereals & Millets": ["Cereal", "Millet"],
+  "Pulses & Legumes": ["Pulse", "Oilseed/Pulse"],
+  "Oilseeds": ["Oilseed"],
+  "Cash & Fibre Crops": ["Cash crop", "Fibre crop"],
+  "Vegetables": ["Vegetable", "Root crop"],
+  "Fruits & Plantation Crops": ["Fruit", "Plantation crop"],
+  "Spices & Condiments": ["Spice"]
+};
+
+// ==========================================
+// 6. MAIN DASHBOARD
 // ==========================================
 
 function render() {
@@ -212,7 +227,7 @@ function render() {
   $("humidityBar").style.width =
     `${Math.max(0, Math.min(100, Number.isFinite(h) ? h : 0))}%`;
 
-  // Calculate and rank all crops
+  // Rank the crops
   const cropData = cropDatabase
     .map(c => ({
       ...c,
@@ -220,23 +235,39 @@ function render() {
     }))
     .sort((a, b) => b.score - a.score);
 
-  // Display all crop suggestions
-  $("crops").innerHTML = cropData.map(c => `
-    <div class="crop">
-      <div class="cropicon">${c.emoji}</div>
-      <div>
-        <b>${c.name}</b>
-        <p>${c.category} — preliminary match based on moisture
-        and temperature only. Check local growing conditions.</p>
-      </div>
-      <div class="score">
-        ${c.score}%
-        <small>prototype match</small>
-      </div>
-    </div>
-  `).join("");
+  // Display up to 10 crops in each horizontal category
+  $("crops").innerHTML = Object.entries(cropCategories)
+    .map(([title, types]) => {
+      const items = cropData
+        .filter(c => types.includes(c.category))
+        .slice(0, 10);
 
-  // Summary cards
+      if (!items.length) return "";
+
+      return `
+        <section class="crop-category">
+          <h3>${title}</h3>
+
+          <div class="crop-row">
+            ${items.map(c => `
+              <article class="crop crop-card">
+                <div class="cropicon">${c.emoji}</div>
+                <b>${c.name}</b>
+                <span class="crop-type">${c.category}</span>
+
+                <div class="score">
+                  ${c.score}%
+                  <small>Prototype match</small>
+                </div>
+              </article>
+            `).join("")}
+          </div>
+        </section>
+      `;
+    })
+    .join("");
+
+  // Field summary
   const summary = [
     [
       "💧",
@@ -276,12 +307,11 @@ function render() {
     </div>
   `).join("");
 
-  // Refresh field scanning display
   renderPoints();
 }
 
 // ==========================================
-// 6. FOUR-POINT FIELD SCANNER
+// 7. FOUR-POINT FIELD SCANNER
 // ==========================================
 
 function renderPoints() {
@@ -311,21 +341,18 @@ $("savePoint").addEventListener("click", () => {
     return;
   }
 
-  p.moisture = Number.isFinite(Number(current.moisture_percent))
-    ? Math.round(Number(current.moisture_percent))
-    : null;
+  const m = Number(current.moisture_percent);
+  const t = Number(current.temperature);
 
-  p.temp = Number.isFinite(Number(current.temperature))
-    ? Number(current.temperature)
-    : null;
-
-  p.saved = p.moisture !== null && p.temp !== null;
-
-  if (!p.saved) {
+  if (!Number.isFinite(m) || !Number.isFinite(t)) {
     $("scanMessage").textContent =
       "Cannot save this point because the sensor reading is invalid.";
     return;
   }
+
+  p.moisture = Math.round(m);
+  p.temp = t;
+  p.saved = true;
 
   current.point = p.name;
   render();
@@ -334,7 +361,7 @@ $("savePoint").addEventListener("click", () => {
     `Saved current reading at Point ${p.name}. Move the probe to the next point.`;
 });
 
-// Reset the field scanner
+// Reset the scanner
 $("resetPoints").addEventListener("click", () => {
   points = points.map(p => ({
     name: p.name,
@@ -351,7 +378,7 @@ $("resetPoints").addEventListener("click", () => {
 });
 
 // ==========================================
-// 7. DEMO MODE
+// 8. DEMO MODE
 // ==========================================
 
 $("demo").addEventListener("click", () => {
@@ -367,7 +394,7 @@ $("demo").addEventListener("click", () => {
 });
 
 // ==========================================
-// 8. DIRECT ESP32 CONNECTION
+// 9. DIRECT ESP32 CONNECTION
 // ==========================================
 
 $("connect").addEventListener("click", async () => {
@@ -428,7 +455,7 @@ $("connect").addEventListener("click", async () => {
 });
 
 // ==========================================
-// 9. FIELD NAME
+// 10. FIELD NAME
 // ==========================================
 
 $("fieldName").addEventListener("change", () => {
@@ -439,7 +466,7 @@ $("fieldName").addEventListener("change", () => {
 });
 
 // ==========================================
-// 10. FIREBASE LIVE SENSOR LISTENER
+// 11. FIREBASE LIVE SENSOR LISTENER
 // ==========================================
 
 window.addEventListener("cropsense-live-data", event => {
@@ -478,9 +505,8 @@ window.addEventListener("cropsense-live-data", event => {
 });
 
 // ==========================================
-// 11. INITIAL DASHBOARD DISPLAY
+// 12. INITIAL DASHBOARD DISPLAY
 // ==========================================
 
 render();
-
 

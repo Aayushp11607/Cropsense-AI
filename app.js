@@ -57,5 +57,3 @@ window.addEventListener("cropsense-live-data", (event) => {
 });
 
 render();
-
-render();

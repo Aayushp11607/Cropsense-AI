@@ -28,4 +28,8 @@
 <div class="connect"><label>ESP32 data URL<input id="deviceUrl" placeholder="http://192.168.4.1/data"></label><button id="connect">Connect &amp; refresh</button><button id="demo" class="secondary">Use demo data</button></div><p id="deviceMessage" class="helper">Not connected. Dashboard currently uses sample data.</p>
 <details><summary>Expected data format</summary><pre>{"moisture_raw":2470,"moisture_percent":35,"temperature":27.8,"humidity":54.2,"point":"A"}</pre><p class="helper">The current sensor sketch prints to Serial Monitor only. We'll add the ESP32 Wi-Fi JSON endpoint next. Browser access may require a local web server and CORS settings.</p></details></section>
 <footer><span>CropSense AI · Prototype v2</span><span>Readings and suggestions are experimental.</span></footer>
-</main><script src="app.js"></script></body></html>
+</main>
+<script src="app.js"></script>
+<script type="module" src="firebase-live.js"></script>
+</body>
+</html>

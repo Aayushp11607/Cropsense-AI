@@ -12,11 +12,11 @@ import {
 
 // Replace these placeholders with values from Firebase Console.
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-  databaseURL: "YOUR_DATABASE_URL",
-  projectId: "YOUR_PROJECT_ID",
-  appId: "YOUR_APP_ID"
+  apiKey: "AIzaSyDHdPwD0U9VyHCucDXfDjlDhQWjmRy1A08",
+  authDomain: "cropsense-ai-c2e61.firebaseapp.com",
+  databaseURL: "https://cropsense-ai-c2e61-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "cropsense-ai-c2e61",
+  appId: "1:355918208036:web:3296ff7600702cc3660cb1"
 };
 
 const app = initializeApp(firebaseConfig);

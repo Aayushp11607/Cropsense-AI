@@ -24,4 +24,38 @@ $("resetPoints").addEventListener("click",()=>{points=points.map(p=>({name:p.nam
 $("demo").addEventListener("click",()=>{current={...demo};$("status").textContent="Demo data";$("status").classList.remove("live");$("deviceMessage").textContent="Using sample data. This is not a live sensor connection.";render();});
 $("connect").addEventListener("click",async()=>{const url=$("deviceUrl").value.trim();if(!url){$("deviceMessage").textContent="Enter the ESP32 data URL. The Wi-Fi JSON endpoint must be configured in the firmware first.";return;}try{$("deviceMessage").textContent="Requesting readings…";const r=await fetch(url,{cache:"no-store"});if(!r.ok)throw Error("HTTP "+r.status);const d=await r.json();const m=Number(d.moisture_percent),t=Number(d.temperature),h=Number(d.humidity);if(![m,t,h].every(Number.isFinite))throw Error("JSON must include numeric moisture_percent, temperature and humidity");current={moisture_raw:Number(d.moisture_raw),moisture_percent:m,temperature:t,humidity:h,point:String(d.point||"A")};$("status").textContent="ESP32 connected";$("status").classList.add("live");$("deviceMessage").textContent="Live readings received. Refresh again to request updated readings.";render();}catch(e){$("status").textContent="Not connected";$("status").classList.remove("live");$("deviceMessage").textContent="Could not read ESP32: "+e.message+". Check Wi-Fi, URL, firmware endpoint and browser CORS settings."; }});
 $("fieldName").addEventListener("change",()=>{const n=$("fieldName").value.trim()||"My Field";$("fieldName").value=n;document.title="CropSense AI | "+n;});
+window.addEventListener("cropsense-live-data", (event) => {
+  const d = event.detail;
+
+  if (!d) return;
+
+  const m = Number(d.moisture_percent);
+  const t = Number(d.temperature);
+  const h = Number(d.humidity);
+
+  if (![m, t, h].every(Number.isFinite)) {
+    console.warn("Firebase data is missing valid sensor readings:", d);
+    return;
+  }
+
+  current = {
+    moisture_raw: Number(d.moisture_raw),
+    moisture_percent: m,
+    temperature: t,
+    humidity: h,
+    point: "A"
+  };
+
+  $("status").textContent = "Live Firebase";
+  $("status").classList.add("live");
+  $("deviceMessage").textContent =
+    "Live sensor readings are updating from Firebase.";
+
+  render();
+
+  console.log("CropSense dashboard updated:", current);
+});
+
+render();
+
 render();

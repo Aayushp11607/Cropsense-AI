@@ -19,11 +19,13 @@ const demo = {
 let current = { ...demo };
 
 let points = [
-  { name: "A", moisture: 35, temp: 27.8, saved: true },
-  { name: "B", moisture: 42, temp: 28.4, saved: true },
-  { name: "C", moisture: 29, temp: 29.1, saved: true },
+  { name: "A", moisture: null, temp: null, saved: false },
+  { name: "B", moisture: null, temp: null, saved: false },
+  { name: "C", moisture: null, temp: null, saved: false },
   { name: "D", moisture: null, temp: null, saved: false }
 ];
+
+let scanComplete = false;
 
 // ==========================================
 // 2. MOISTURE STATUS

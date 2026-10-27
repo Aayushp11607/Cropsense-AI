@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -126,7 +125,7 @@
     <!-- FIELD SCANNER AND CROP SUGGESTIONS -->
     <section class="columns">
 
-      <!-- MULTI-POINT FIELD SCANNER -->
+      <!-- FOUR-POINT FIELD SCANNER -->
       <article class="panel">
 
         <div class="panelhead">
@@ -135,32 +134,43 @@
             <h2>Check different places</h2>
           </div>
 
-          <span class="pill" id="scanCount">3/4 points</span>
+          <span class="pill" id="scanCount">0/4 points</span>
         </div>
 
         <p class="muted">
-          Move the soil moisture probe manually between marked places.
-          Save a reading at each point to compare variation across
-          your field.
+          Move the soil moisture probe manually between four marked
+          places in your field. Save a reading at each point to compare
+          variations across the field.
         </p>
 
         <div id="points" class="points"></div>
 
         <div class="buttons">
-  <button id="savePoint">Save Current Reading</button>
+          <button id="savePoint" type="button">
+            ＋ Save Current Reading
+          </button>
 
-  <button id="doneScan" class="secondary" disabled>
-    Done
-  </button>
+          <button
+            id="doneScan"
+            class="secondary"
+            type="button"
+            disabled
+          >
+            Done
+          </button>
 
-  <button id="resetPoints" class="secondary">
-    Reset Points
-  </button>
-</div>
+          <button
+            id="resetPoints"
+            class="secondary"
+            type="button"
+          >
+            Reset Points
+          </button>
+        </div>
 
         <p id="scanMessage" class="helper">
-          Waiting for readings. Sample readings may appear before
-          a live sensor connection is established.
+          Save readings at Points A, B, C and D. Crop match percentages
+          will appear after you complete the scan.
         </p>
 
       </article>
@@ -178,22 +188,22 @@
         </div>
 
         <p class="muted">
-          Explore the highest-ranked crops in each category.
-          Scroll horizontally to see more suggestions.
-          Rankings are preliminary prototype matches, not validated
-          agricultural recommendations.
+          Explore crops in each category. Scroll horizontally to see
+          more suggestions. Complete the four-point scan and select Done
+          to reveal preliminary prototype match percentages.
         </p>
 
-        <!-- app.js creates horizontal crop categories here -->
+        <!-- app.js creates crop categories here -->
         <div id="crops"></div>
 
         <div class="notice">
           <b>Important:</b>
-          Current rankings use soil moisture and air temperature
-          only. Soil pH, soil type, location, season, rainfall,
-          irrigation and crop variety are not fully evaluated.
-          Confirm planting decisions with a local agriculture officer
-          or Krishi Vigyan Kendra.
+          These are experimental prototype matches, not validated
+          agricultural recommendations. The current model uses soil
+          moisture and air temperature only. Soil pH, soil type,
+          location, season, rainfall, irrigation and crop variety
+          are not fully evaluated. Consult a local agriculture officer
+          or Krishi Vigyan Kendra before making planting decisions.
         </div>
 
       </article>
@@ -287,11 +297,11 @@
         </label>
 
         <button id="connect" type="button">
-          Connect &amp; refresh
+          Connect &amp; Refresh
         </button>
 
         <button id="demo" class="secondary" type="button">
-          Use demo data
+          Use Demo Data
         </button>
 
       </div>
@@ -312,7 +322,7 @@
 }</pre>
 
         <p class="helper">
-          The direct connection requires the ESP32 firmware to provide
+          Direct connection requires the ESP32 firmware to provide
           a JSON endpoint at the entered URL. Firebase live updates
           are handled separately by firebase-live.js.
         </p>
@@ -384,16 +394,6 @@
           </li>
         </ul>
 
-        <!-- SMALL BRAND LOGO -->
-        <div class="contribution-logo">
-          <img
-            src="assets/cropsense-logo.png"
-            alt="CropSense AI startup logo"
-            class="small-brand-logo"
-            loading="lazy"
-          >
-        </div>
-
         <p class="team-tagline">
           Better Choice, Greener Tomorrow.
         </p>
@@ -418,3 +418,4 @@
 
 </body>
 </html>
+   

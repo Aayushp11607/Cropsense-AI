@@ -1,5 +1,4 @@
 
-
 "use strict";
 
 // ==========================================
@@ -26,6 +25,7 @@ let points = [
 ];
 
 let scanComplete = false;
+
 
 // ==========================================
 // 2. MOISTURE STATUS
@@ -62,6 +62,7 @@ function moistureStatus(value) {
     "Check drainage; suitable moisture levels vary by crop."
   ];
 }
+
 
 // ==========================================
 // 3. CROP DATABASE
@@ -158,6 +159,7 @@ const cropDatabase = [
   {name:"Black Pepper",emoji:"🌿",targetM:70,targetT:27,category:"Spice"}
 ];
 
+
 // ==========================================
 // 4. PROTOTYPE MATCH SCORE
 // ==========================================
@@ -183,9 +185,9 @@ function score(m, t, targetM, targetT) {
   );
 }
 
+
 // ==========================================
 // 5. CROP CATEGORIES
-// Up to 10 highest-scoring crops per row
 // ==========================================
 
 const cropCategories = {
@@ -197,6 +199,7 @@ const cropCategories = {
   "Fruits & Plantation Crops": ["Fruit", "Plantation crop"],
   "Spices & Condiments": ["Spice"]
 };
+
 
 // ==========================================
 // 6. MAIN DASHBOARD
@@ -229,15 +232,48 @@ function render() {
   $("humidityBar").style.width =
     `${Math.max(0, Math.min(100, Number.isFinite(h) ? h : 0))}%`;
 
-  // Rank the crops
+
+  // ==========================================
+  // CROP DISPLAY AND FOUR-POINT AVERAGES
+  // ==========================================
+
+  const allPointsSaved = points.every(p =>
+    p.saved &&
+    Number.isFinite(p.moisture) &&
+    Number.isFinite(p.temp)
+  );
+
+  const showScores = scanComplete && allPointsSaved;
+
+  const averageMoisture = showScores
+    ? points.reduce((sum, p) => sum + p.moisture, 0) / 4
+    : NaN;
+
+  const averageTemperature = showScores
+    ? points.reduce((sum, p) => sum + p.temp, 0) / 4
+    : NaN;
+
   const cropData = cropDatabase
     .map(c => ({
       ...c,
-      score: score(m, t, c.targetM, c.targetT)
+      score: showScores
+        ? score(
+            averageMoisture,
+            averageTemperature,
+            c.targetM,
+            c.targetT
+          )
+        : null
     }))
-    .sort((a, b) => b.score - a.score);
+    .sort((a, b) => {
+      if (!showScores) {
+        return a.name.localeCompare(b.name);
+      }
 
-  // Display up to 10 crops in each horizontal category
+      return b.score - a.score;
+    });
+
+  // Display up to 10 crops in each horizontal category.
   $("crops").innerHTML = Object.entries(cropCategories)
     .map(([title, types]) => {
       const items = cropData
@@ -257,10 +293,12 @@ function render() {
                 <b>${c.name}</b>
                 <span class="crop-type">${c.category}</span>
 
-                <div class="score">
-                  ${c.score}%
-                  <small>Prototype match</small>
-                </div>
+                ${showScores ? `
+                  <div class="score">
+                    ${c.score}%
+                    <small>Prototype match</small>
+                  </div>
+                ` : ""}
               </article>
             `).join("")}
           </div>
@@ -269,7 +307,11 @@ function render() {
     })
     .join("");
 
-  // Field summary
+
+  // ==========================================
+  // FIELD SUMMARY
+  // ==========================================
+
   const summary = [
     [
       "💧",
@@ -312,6 +354,7 @@ function render() {
   renderPoints();
 }
 
+
 // ==========================================
 // 7. FOUR-POINT FIELD SCANNER
 // ==========================================
@@ -329,11 +372,28 @@ function renderPoints() {
     </div>
   `).join("");
 
-  $("scanCount").textContent =
-    `${points.filter(p => p.saved).length}/4 points`;
+  const savedCount = points.filter(p => p.saved).length;
+
+  const allPointsSaved = points.every(p =>
+    p.saved &&
+    Number.isFinite(p.moisture) &&
+    Number.isFinite(p.temp)
+  );
+
+  $("scanCount").textContent = `${savedCount}/4 points`;
+
+  // Done is enabled only when all four valid readings are saved.
+  $("doneScan").disabled = !allPointsSaved;
+
+  $("doneScan").textContent =
+    scanComplete ? "Completed ✓" : "Done";
+
+  // Do not allow more readings after all four points are saved.
+  $("savePoint").disabled = savedCount === 4;
 }
 
-// Save a reading to the next unscanned point
+
+// Save a reading to the next unscanned point.
 $("savePoint").addEventListener("click", () => {
   const p = points.find(point => !point.saved);
 
@@ -346,7 +406,12 @@ $("savePoint").addEventListener("click", () => {
   const m = Number(current.moisture_percent);
   const t = Number(current.temperature);
 
-  if (!Number.isFinite(m) || !Number.isFinite(t)) {
+  if (
+    !Number.isFinite(m) ||
+    !Number.isFinite(t) ||
+    current.moisture_percent === null ||
+    current.temperature === null
+  ) {
     $("scanMessage").textContent =
       "Cannot save this point because the sensor reading is invalid.";
     return;
@@ -356,15 +421,51 @@ $("savePoint").addEventListener("click", () => {
   p.temp = t;
   p.saved = true;
 
+  // Scores must be confirmed again by clicking Done.
+  scanComplete = false;
+
   current.point = p.name;
+
   render();
 
   $("scanMessage").textContent =
     `Saved current reading at Point ${p.name}. Move the probe to the next point.`;
 });
 
-// Reset the scanner
+
+// ==========================================
+// DONE BUTTON
+// ==========================================
+
+$("doneScan").addEventListener("click", () => {
+  const allPointsSaved = points.every(p =>
+    p.saved &&
+    Number.isFinite(p.moisture) &&
+    Number.isFinite(p.temp)
+  );
+
+  if (!allPointsSaved) {
+    $("scanMessage").textContent =
+      "Save valid readings at Points A, B, C and D before clicking Done.";
+    return;
+  }
+
+  scanComplete = true;
+
+  render();
+
+  $("scanMessage").textContent =
+    "Field scan complete. Crop match percentages now use the average of all four samples.";
+});
+
+
+// ==========================================
+// RESET THE SCANNER
+// ==========================================
+
 $("resetPoints").addEventListener("click", () => {
+  scanComplete = false;
+
   points = points.map(p => ({
     name: p.name,
     moisture: null,
@@ -373,11 +474,13 @@ $("resetPoints").addEventListener("click", () => {
   }));
 
   current.point = "A";
+
   render();
 
   $("scanMessage").textContent =
     "Scan reset. Take new readings at Points A, B, C and D.";
 });
+
 
 // ==========================================
 // 8. DEMO MODE
@@ -395,6 +498,7 @@ $("demo").addEventListener("click", () => {
   render();
 });
 
+
 // ==========================================
 // 9. DIRECT ESP32 CONNECTION
 // ==========================================
@@ -411,7 +515,9 @@ $("connect").addEventListener("click", async () => {
   try {
     $("deviceMessage").textContent = "Requesting readings…";
 
-    const response = await fetch(url, { cache: "no-store" });
+    const response = await fetch(url, {
+      cache: "no-store"
+    });
 
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}`);
@@ -456,6 +562,7 @@ $("connect").addEventListener("click", async () => {
   }
 });
 
+
 // ==========================================
 // 10. FIELD NAME
 // ==========================================
@@ -466,6 +573,7 @@ $("fieldName").addEventListener("change", () => {
   $("fieldName").value = name;
   document.title = `CropSense AI | ${name}`;
 });
+
 
 // ==========================================
 // 11. FIREBASE LIVE SENSOR LISTENER
@@ -505,6 +613,7 @@ window.addEventListener("cropsense-live-data", event => {
 
   console.log("CropSense dashboard updated:", current);
 });
+
 
 // ==========================================
 // 12. INITIAL DASHBOARD DISPLAY

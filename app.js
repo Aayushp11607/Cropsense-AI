@@ -1,10 +1,17 @@
+
 "use strict";
 
-// ==========================================
-// 1. INITIAL DATA
-// ==========================================
+// =====================================================
+// CROPSENSE AI — MAIN WEBSITE APPLICATION
+// Existing ESP32 + Firebase + Scanner functionality
+// New: India-wide location, seasons and manual soil pH
+// =====================================================
 
 const $ = id => document.getElementById(id);
+
+// -----------------------------------------------------
+// 1. INITIAL SENSOR DATA
+// -----------------------------------------------------
 
 const demo = {
   moisture_raw: 2470,
@@ -24,52 +31,110 @@ let points = [
 ];
 
 let scanComplete = false;
+let selectedSoilType = "Not selected";
+let selectedSeason = "";
+let selectedState = "";
+let soilPH = null;
+let pHPhotoURL = null;
 
+// -----------------------------------------------------
+// 2. INDIAN STATES AND UNION TERRITORIES
+// District and village are entered manually so that
+// every Indian district and village can be supported.
+// -----------------------------------------------------
 
-// ==========================================
-// 2. MOISTURE STATUS
-// ==========================================
+const indiaLocations = {
+  "Andhra Pradesh": [
+    "Andhra Pradesh"
+  ],
+  "Arunachal Pradesh": [
+    "Arunachal Pradesh"
+  ],
+  "Assam": ["Assam"],
+  "Bihar": ["Bihar"],
+  "Chhattisgarh": ["Chhattisgarh"],
+  "Goa": ["Goa"],
+  "Gujarat": ["Gujarat"],
+  "Haryana": ["Haryana"],
+  "Himachal Pradesh": ["Himachal Pradesh"],
+  "Jharkhand": ["Jharkhand"],
+  "Karnataka": ["Karnataka"],
+  "Kerala": ["Kerala"],
+  "Madhya Pradesh": ["Madhya Pradesh"],
+  "Maharashtra": ["Maharashtra"],
+  "Manipur": ["Manipur"],
+  "Meghalaya": ["Meghalaya"],
+  "Mizoram": ["Mizoram"],
+  "Nagaland": ["Nagaland"],
+  "Odisha": ["Odisha"],
+  "Punjab": ["Punjab"],
+  "Rajasthan": ["Rajasthan"],
+  "Sikkim": ["Sikkim"],
+  "Tamil Nadu": ["Tamil Nadu"],
+  "Telangana": ["Telangana"],
+  "Tripura": ["Tripura"],
+  "Uttar Pradesh": ["Uttar Pradesh"],
+  "Uttarakhand": ["Uttarakhand"],
+  "West Bengal": ["West Bengal"],
+  "Andaman and Nicobar Islands": [
+    "Andaman and Nicobar Islands"
+  ],
+  "Chandigarh": ["Chandigarh"],
+  "Dadra and Nagar Haveli and Daman and Diu": [
+    "Dadra and Nagar Haveli and Daman and Diu"
+  ],
+  "Delhi": ["Delhi"],
+  "Jammu and Kashmir": ["Jammu and Kashmir"],
+  "Ladakh": ["Ladakh"],
+  "Lakshadweep": ["Lakshadweep"],
+  "Puducherry": ["Puducherry"]
+};
 
-function moistureStatus(value) {
-  if (!Number.isFinite(value)) {
-    return ["Unavailable", "No valid soil moisture reading."];
+// -----------------------------------------------------
+// 3. INDIAN SOIL TYPES
+// -----------------------------------------------------
+
+const indianSoilTypes = [
+  "Black soil",
+  "Red and yellow soil",
+  "Alluvial soil",
+  "Laterite soil",
+  "Arid / desert soil",
+  "Mountain / forest soil",
+  "Saline / alkaline soil",
+  "Peaty / marshy soil"
+];
+
+// -----------------------------------------------------
+// 4. INDIAN AGRICULTURAL SEASONS
+// These are broad typical periods. Actual crop calendars
+// vary by state, district and local farming conditions.
+// -----------------------------------------------------
+
+const seasonDatabase = {
+  "Kharif": {
+    months: "June – October",
+    description: "Generally associated with the monsoon season.",
+    crops: "Rice, maize, soybean, cotton, millets and pulses"
+  },
+  "Rabi": {
+    months: "October – March",
+    description: "Generally associated with the winter season.",
+    crops: "Wheat, chickpea, mustard, peas and lentils"
+  },
+  "Zaid": {
+    months: "March – June",
+    description: "Generally associated with the summer season.",
+    crops: "Watermelon, cucumber and selected summer vegetables"
   }
+};
 
-  if (value < 25) {
-    return [
-      "Low",
-      "Soil may be dry. Check root-zone moisture and crop needs before watering."
-    ];
-  }
-
-  if (value < 45) {
-    return [
-      "Moderate-low",
-      "Compare readings at other points and check crop water needs."
-    ];
-  }
-
-  if (value <= 75) {
-    return [
-      "Moderate",
-      "Middle range for this prototype; actual crop requirements vary."
-    ];
-  }
-
-  return [
-    "High",
-    "Check drainage; suitable moisture levels vary by crop."
-  ];
-}
-
-
-// ==========================================
-// 3. CROP DATABASE
-// Targets are illustrative prototype values.
-// ==========================================
+// -----------------------------------------------------
+// 5. CROP DATABASE
+// Target values are experimental prototype values.
+// -----------------------------------------------------
 
 const cropDatabase = [
-
   // Cereals and millets
   {name:"Rice",emoji:"🌾",targetM:75,targetT:28,category:"Cereal"},
   {name:"Wheat",emoji:"🌾",targetM:40,targetT:22,category:"Cereal"},
@@ -157,65 +222,10 @@ const cropDatabase = [
   {name:"Black Pepper",emoji:"🌿",targetM:70,targetT:27,category:"Spice"}
 ];
 
-
-// ==========================================
-// 4. PROTOTYPE MATCH SCORE
-// ==========================================
-
-function score(m, t, targetM, targetT) {
-  if (!Number.isFinite(m) || !Number.isFinite(t)) {
-    return 0;
-  }
-
-  const moistureScore = Math.max(
-    0,
-    100 - Math.abs(m - targetM) * 1.5
-  );
-
-  const temperatureScore = Math.max(
-    0,
-    100 - Math.abs(t - targetT) * 9
-  );
-
-  return Math.round(
-    moistureScore * 0.65 +
-    temperatureScore * 0.35
-  );
-}
-
-
-// ==========================================
-// 5. CROP CATEGORIES
-// ==========================================
-
-const cropCategories = {
-  "Cereals & Millets": ["Cereal", "Millet"],
-  "Pulses & Legumes": ["Pulse", "Oilseed/Pulse"],
-  "Oilseeds": ["Oilseed"],
-  "Cash & Fibre Crops": ["Cash crop", "Fibre crop"],
-  "Vegetables": ["Vegetable", "Root crop"],
-  "Fruits & Plantation Crops": ["Fruit", "Plantation crop"],
-  "Spices & Condiments": ["Spice"]
-};
-
-
-// ==========================================
-// 5A. INDIAN SOIL-TYPE GUIDANCE
-// Broad associations, not field-level guarantees.
-// ==========================================
-
-const indianSoilTypes = [
-  "Black soil",
-  "Red and yellow soil",
-  "Alluvial soil",
-  "Laterite soil",
-  "Arid / desert soil",
-  "Mountain / forest soil",
-  "Saline / alkaline soil",
-  "Peaty / marshy soil"
-];
-
-let selectedSoilType = "Not selected";
+// -----------------------------------------------------
+// 6. CROP-SOIL GUIDANCE
+// Broad associations, not guaranteed suitability.
+// -----------------------------------------------------
 
 const cropSoilGuide = {
   "Rice": ["Alluvial soil", "Peaty / marshy soil"],
@@ -277,99 +287,395 @@ const cropSoilGuide = {
   "Black Pepper": ["Laterite soil"]
 };
 
+// -----------------------------------------------------
+// 7. CROP CATEGORIES
+// -----------------------------------------------------
 
-// Add soil selector above crop cards.
-function ensureSoilSelector() {
-  if ($("soilTypeSelect")) return;
+const cropCategories = {
+  "Cereals & Millets": ["Cereal", "Millet"],
+  "Pulses & Legumes": ["Pulse", "Oilseed/Pulse"],
+  "Oilseeds": ["Oilseed"],
+  "Cash & Fibre Crops": ["Cash crop", "Fibre crop"],
+  "Vegetables": ["Vegetable", "Root crop"],
+  "Fruits & Plantation Crops": ["Fruit", "Plantation crop"],
+  "Spices & Condiments": ["Spice"]
+};
+
+// -----------------------------------------------------
+// 8. MOISTURE STATUS
+// -----------------------------------------------------
+
+function moistureStatus(value) {
+  if (!Number.isFinite(value)) {
+    return ["Unavailable", "No valid soil moisture reading."];
+  }
+
+  if (value < 25) {
+    return [
+      "Low",
+      "Soil may be dry. Check root-zone moisture and crop needs before watering."
+    ];
+  }
+
+  if (value < 45) {
+    return [
+      "Moderate-low",
+      "Compare readings at other points and check crop water needs."
+    ];
+  }
+
+  if (value <= 75) {
+    return [
+      "Moderate",
+      "Middle range for this prototype; actual crop requirements vary."
+    ];
+  }
+
+  return [
+    "High",
+    "Check drainage; suitable moisture levels vary by crop."
+  ];
+}
+
+// -----------------------------------------------------
+// 9. CROP SCORE
+// -----------------------------------------------------
+
+function score(m, t, targetM, targetT) {
+  if (!Number.isFinite(m) || !Number.isFinite(t)) {
+    return 0;
+  }
+
+  const moistureScore = Math.max(
+    0,
+    100 - Math.abs(m - targetM) * 1.5
+  );
+
+  const temperatureScore = Math.max(
+    0,
+    100 - Math.abs(t - targetT) * 9
+  );
+
+  return Math.round(
+    moistureScore * 0.65 +
+    temperatureScore * 0.35
+  );
+}
+
+// -----------------------------------------------------
+// 10. CREATE FARMER INPUT PANEL
+// -----------------------------------------------------
+
+function ensureFarmInputs() {
+  if ($("farmInputs")) return;
 
   const cropsContainer = $("crops");
-  if (!cropsContainer) return;
+  if (!cropsContainer || !cropsContainer.parentNode) return;
 
-  const wrapper = document.createElement("div");
-  wrapper.className = "soil-type-filter";
-  wrapper.style.cssText =
-    "margin:12px 0 16px;padding:12px;border:1px solid #d8e6dc;border-radius:12px;background:#f5faf6;";
+  const panel = document.createElement("section");
+  panel.id = "farmInputs";
 
-  const label = document.createElement("label");
-  label.htmlFor = "soilTypeSelect";
-  label.textContent =
-    "Select your Indian soil type (farmer-selected):";
-  label.style.cssText =
-    "display:block;font-weight:600;margin-bottom:7px;";
+  panel.style.cssText = `
+    margin:16px 0;
+    padding:16px;
+    border:1px solid #d8e6dc;
+    border-radius:14px;
+    background:#f7faf7;
+    color:#203328;
+    box-sizing:border-box;
+  `;
 
-  const select = document.createElement("select");
-  select.id = "soilTypeSelect";
-  select.style.cssText =
-    "width:100%;max-width:100%;padding:10px;border:1px solid #b8cdbd;border-radius:8px;background:white;";
+  panel.innerHTML = `
+    <h3 style="margin:0 0 12px;">🌱 Your Farm Details</h3>
 
-  const first = document.createElement("option");
-  first.value = "Not selected";
-  first.textContent = "Choose soil type";
-  select.appendChild(first);
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;">
 
-  indianSoilTypes.forEach(type => {
-    const option = document.createElement("option");
-    option.value = type;
-    option.textContent = type;
-    select.appendChild(option);
+      <div>
+        <label for="farmState" style="display:block;font-weight:600;margin-bottom:5px;">
+          State / Union Territory
+        </label>
+        <select id="farmState" style="width:100%;padding:11px;border:1px solid #b8cdbd;border-radius:8px;background:white;">
+          <option value="">Select state / UT</option>
+          ${Object.keys(indiaLocations).map(state =>
+            `<option value="${state}">${state}</option>`
+          ).join("")}
+        </select>
+      </div>
+
+      <div>
+        <label for="farmDistrict" style="display:block;font-weight:600;margin-bottom:5px;">
+          District
+        </label>
+        <input id="farmDistrict" type="text" maxlength="80"
+          placeholder="Enter your district"
+          style="width:100%;padding:11px;border:1px solid #b8cdbd;border-radius:8px;box-sizing:border-box;">
+      </div>
+
+      <div>
+        <label for="farmVillage" style="display:block;font-weight:600;margin-bottom:5px;">
+          Village / Town
+        </label>
+        <input id="farmVillage" type="text" maxlength="100"
+          placeholder="Enter village or town"
+          style="width:100%;padding:11px;border:1px solid #b8cdbd;border-radius:8px;box-sizing:border-box;">
+      </div>
+
+      <div>
+        <label for="farmSeason" style="display:block;font-weight:600;margin-bottom:5px;">
+          Cropping season
+        </label>
+        <select id="farmSeason" style="width:100%;padding:11px;border:1px solid #b8cdbd;border-radius:8px;background:white;">
+          <option value="">Select season</option>
+          <option value="Kharif">Kharif</option>
+          <option value="Rabi">Rabi</option>
+          <option value="Zaid">Zaid</option>
+          <option value="Perennial">Perennial / Year-round</option>
+        </select>
+      </div>
+
+    </div>
+
+    <div id="seasonInfo" style="margin-top:10px;font-size:0.9em;color:#52665a;"></div>
+
+    <hr style="border:0;border-top:1px solid #d8e6dc;margin:18px 0;">
+
+    <h3 style="margin:0 0 12px;">🧪 Soil pH Test</h3>
+
+    <p style="font-size:0.9em;margin:0 0 12px;color:#52665a;">
+      Test your soil using the CropSense pH strip kit, then enter the value shown by the colour chart.
+    </p>
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;">
+
+      <div>
+        <label for="soilPHInput" style="display:block;font-weight:600;margin-bottom:5px;">
+          Enter soil pH (0–14)
+        </label>
+        <input id="soilPHInput" type="number" min="0" max="14" step="0.1"
+          placeholder="Example: 6.5"
+          inputmode="decimal"
+          style="width:100%;padding:11px;border:1px solid #b8cdbd;border-radius:8px;box-sizing:border-box;">
+      </div>
+
+      <div>
+        <label for="phPhoto" style="display:block;font-weight:600;margin-bottom:5px;">
+          Upload pH strip photograph (optional)
+        </label>
+        <input id="phPhoto" type="file" accept="image/*"
+          style="width:100%;padding:8px;border:1px solid #b8cdbd;border-radius:8px;background:white;box-sizing:border-box;">
+      </div>
+
+    </div>
+
+    <div id="phPhotoPreview" style="margin-top:10px;"></div>
+    <div id="phResult" aria-live="polite" style="margin-top:12px;"></div>
+
+    <div style="margin-top:12px;padding:10px;background:#edf4ee;border-radius:8px;font-size:0.85em;color:#435448;">
+      Follow the instructions supplied with your pH kit. A strip photograph is not automatically analysed by this website. For soil treatment decisions, confirm the result with a soil-testing laboratory.
+    </div>
+
+    <hr style="border:0;border-top:1px solid #d8e6dc;margin:18px 0;">
+
+    <h3 style="margin:0 0 10px;">🌍 Indian Soil Type</h3>
+
+    <label for="soilTypeSelect" style="display:block;font-weight:600;margin-bottom:6px;">
+      Select your soil type
+    </label>
+
+    <select id="soilTypeSelect" style="width:100%;padding:11px;border:1px solid #b8cdbd;border-radius:8px;background:white;">
+      <option value="Not selected">Choose soil type</option>
+      ${indianSoilTypes.map(type =>
+        `<option value="${type}">${type}</option>`
+      ).join("")}
+    </select>
+
+    <p style="font-size:0.85em;margin:8px 0 0;color:#52665a;">
+      Select the soil type based on your knowledge or local soil information. This is a farmer input, not a sensor measurement.
+    </p>
+  `;
+
+  cropsContainer.parentNode.insertBefore(panel, cropsContainer);
+
+  $("farmState").addEventListener("change", () => {
+    selectedState = $("farmState").value;
   });
 
-  select.value = selectedSoilType;
+  $("farmSeason").addEventListener("change", () => {
+    selectedSeason = $("farmSeason").value;
+    renderSeasonInfo();
+  });
 
-  select.addEventListener("change", () => {
-    selectedSoilType = select.value;
+  $("soilTypeSelect").addEventListener("change", () => {
+    selectedSoilType = $("soilTypeSelect").value;
     render();
   });
 
-  const note = document.createElement("p");
-  note.textContent =
-    "This is a manual selection, not a sensor measurement. Soil type alone cannot decide the best crop.";
-  note.style.cssText =
-    "font-size:0.85em;margin:8px 0 0;color:#52665a;";
+  $("soilPHInput").addEventListener("input", () => {
+    const value = $("soilPHInput").value.trim();
 
-  wrapper.append(label, select, note);
-  cropsContainer.parentNode.insertBefore(wrapper, cropsContainer);
+    if (value === "") {
+      soilPH = null;
+    } else {
+      const parsed = Number(value);
+      soilPH = Number.isFinite(parsed) && parsed >= 0 && parsed <= 14
+        ? parsed
+        : null;
+    }
+
+    renderPHResult();
+    renderSummary();
+  });
+
+  $("phPhoto").addEventListener("change", handlePHPhoto);
 }
 
+// -----------------------------------------------------
+// 11. SEASON INFORMATION
+// -----------------------------------------------------
 
-// ==========================================
-// 6. MAIN DASHBOARD
-// ==========================================
+function renderSeasonInfo() {
+  const box = $("seasonInfo");
+  if (!box) return;
 
-function render() {
-  ensureSoilSelector();
+  const season = seasonDatabase[selectedSeason];
 
-  const m = Number(current.moisture_percent);
-  const t = Number(current.temperature);
-  const h = Number(current.humidity);
+  if (season) {
+    box.innerHTML = `
+      <b>${selectedSeason}</b> · Typical period: ${season.months}<br>
+      ${season.description}<br>
+      <span>Examples: ${season.crops}</span>
+    `;
+  } else if (selectedSeason === "Perennial") {
+    box.textContent =
+      "For perennial crops, consider local climate, water availability and the crop's growth cycle.";
+  } else {
+    box.textContent = "";
+  }
+}
 
-  // Sensor cards
-  $("moisture").textContent =
-    Number.isFinite(m) ? Math.round(m) : "--";
+// -----------------------------------------------------
+// 12. SOIL pH INTERPRETATION
+// This is general guidance, not a fertilizer prescription.
+// -----------------------------------------------------
 
-  $("temp").textContent =
-    Number.isFinite(t) ? t.toFixed(1) : "--";
+function getPHGuidance(value) {
+  if (!Number.isFinite(value)) return null;
 
-  $("humidity").textContent =
-    Number.isFinite(h) ? h.toFixed(1) : "--";
+  if (value < 5.5) {
+    return {
+      label: "Strongly acidic",
+      message:
+        "A soil laboratory test can determine whether liming is needed. Agricultural lime may be considered; dolomite may be appropriate if magnesium is also deficient. Do not apply a dose based on pH alone."
+    };
+  }
 
-  $("moistureNote").textContent =
-    Number.isFinite(m) ? moistureStatus(m)[0] : "Unavailable";
+  if (value < 6.5) {
+    return {
+      label: "Moderately acidic",
+      message:
+        "Check crop requirements and obtain a lime-requirement test before considering agricultural lime. Some crops tolerate mildly acidic soil."
+    };
+  }
 
-  $("moistureBar").style.width =
-    `${Math.max(0, Math.min(100, Number.isFinite(m) ? m : 0))}%`;
+  if (value <= 7.5) {
+    return {
+      label: "Near-neutral",
+      message:
+        "pH is in a commonly suitable range for many crops. Do not apply a pH-correcting amendment unless a soil test identifies a need."
+    };
+  }
 
-  $("tempBar").style.width =
-    `${Math.max(0, Math.min(100, Number.isFinite(t) ? t * 2 : 0))}%`;
+  if (value <= 8.5) {
+    return {
+      label: "Alkaline",
+      message:
+        "Further soil testing is needed to identify the cause. pH alone cannot confirm sodicity. Do not apply gypsum or sulphur without a suitable soil test and local expert advice."
+    };
+  }
 
-  $("humidityBar").style.width =
-    `${Math.max(0, Math.min(100, Number.isFinite(h) ? h : 0))}%`;
+  return {
+    label: "Strongly alkaline",
+    message:
+      "Seek a laboratory soil test for pH, electrical conductivity and sodicity indicators. A local agricultural expert should determine the appropriate treatment."
+  };
+}
 
+function renderPHResult() {
+  const box = $("phResult");
+  if (!box) return;
 
-  // ==========================================
-  // CROP DISPLAY AND FOUR-POINT AVERAGES
-  // ==========================================
+  if (soilPH === null) {
+    box.innerHTML = `
+      <span style="color:#64756a;">No valid pH value entered yet.</span>
+    `;
+    return;
+  }
 
+  const guidance = getPHGuidance(soilPH);
+
+  box.innerHTML = `
+    <div style="padding:12px;border:1px solid #cbdccf;border-radius:10px;background:white;">
+      <div style="font-size:1.1em;font-weight:700;">
+        Soil pH: ${soilPH.toFixed(1)}
+      </div>
+      <div style="font-weight:700;color:#247344;margin-top:4px;">
+        ${guidance.label}
+      </div>
+      <p style="margin:8px 0 0;font-size:0.9em;line-height:1.5;">
+        ${guidance.message}
+      </p>
+    </div>
+  `;
+}
+
+// -----------------------------------------------------
+// 13. pH PHOTO PREVIEW
+// The image is not automatically interpreted.
+// -----------------------------------------------------
+
+function handlePHPhoto(event) {
+  const file = event.target.files && event.target.files[0];
+  const preview = $("phPhotoPreview");
+
+  if (!file || !preview) return;
+
+  if (!file.type.startsWith("image/")) {
+    preview.textContent = "Please select an image file.";
+    return;
+  }
+
+  if (file.size > 5 * 1024 * 1024) {
+    preview.textContent = "Please choose an image smaller than 5 MB.";
+    event.target.value = "";
+    return;
+  }
+
+  if (pHPhotoURL) {
+    URL.revokeObjectURL(pHPhotoURL);
+  }
+
+  pHPhotoURL = URL.createObjectURL(file);
+
+  preview.innerHTML = `
+    <div style="padding:10px;border:1px solid #d8e6dc;border-radius:10px;background:white;">
+      <b>pH strip photograph selected</b>
+      <p style="font-size:0.85em;color:#52665a;margin:5px 0;">
+        Use the kit colour chart to read the result and enter the pH value manually.
+      </p>
+      <img
+        src="${pHPhotoURL}"
+        alt="Uploaded soil pH test strip"
+        style="display:block;max-width:100%;max-height:220px;object-fit:contain;border-radius:8px;margin-top:8px;"
+      >
+    </div>
+  `;
+}
+
+// -----------------------------------------------------
+// 14. CROP RECOMMENDATION DISPLAY
+// -----------------------------------------------------
+
+function renderCrops() {
   const allPointsSaved = points.every(p =>
     p.saved &&
     Number.isFinite(p.moisture) &&
@@ -402,11 +708,9 @@ function render() {
       if (!showScores) {
         return a.name.localeCompare(b.name);
       }
-
       return b.score - a.score;
     });
 
-  // Display up to 10 crops in each horizontal category.
   $("crops").innerHTML = Object.entries(cropCategories)
     .map(([title, types]) => {
       const items = cropData
@@ -418,7 +722,6 @@ function render() {
       return `
         <section class="crop-category">
           <h3>${title}</h3>
-
           <div class="crop-row">
             ${items.map(c => {
               const suitableSoils = cropSoilGuide[c.name] || [];
@@ -428,36 +731,23 @@ function render() {
               return `
                 <article class="crop crop-card">
                   <div class="cropicon">${c.emoji}</div>
-
                   <b>${c.name}</b>
-
                   <span class="crop-type">${c.category}</span>
-
-                  <small class="soil-suitability"
-                    style="display:block;margin-top:6px;color:#52665a;">
-                    <b>Often suitable soil:</b>
-                    ${suitableSoils.length
-                      ? suitableSoils.join(", ")
-                      : "Varies; check local soil conditions"}
-                  </small>
 
                   ${selectedSoilType !== "Not selected" ? `
                     <small style="
                       display:block;
-                      margin-top:4px;
+                      margin-top:7px;
                       font-weight:600;
-                      color:${matchesSelectedSoil ? "#247344" : "#8a5a16"};
+                      color:${matchesSelectedSoil ? "#247344" : "#a15c16"};
                     ">
-                      ${matchesSelectedSoil
-                        ? "✓ Listed for selected soil"
-                        : "Not listed for selected soil"}
+                      ${matchesSelectedSoil ? "Suitable" : "Unsuitable"}
                     </small>
                   ` : ""}
 
                   ${showScores ? `
                     <div class="score">
                       ${c.score}%
-                      <small>Prototype match</small>
                     </div>
                   ` : ""}
                 </article>
@@ -468,40 +758,74 @@ function render() {
       `;
     })
     .join("");
+}
 
+// -----------------------------------------------------
+// 15. FIELD SUMMARY
+// -----------------------------------------------------
 
-  // ==========================================
-  // FIELD SUMMARY
-  // ==========================================
+function renderSummary() {
+  const m = Number(current.moisture_percent);
+  const t = Number(current.temperature);
+  const h = Number(current.humidity);
+
+  const locationParts = [
+    $("farmVillage")?.value.trim(),
+    $("farmDistrict")?.value.trim(),
+    selectedState
+  ].filter(Boolean);
 
   const summary = [
     [
       "💧",
       "Soil moisture",
       Number.isFinite(m)
-        ? `${moistureStatus(m)[0]} (${Math.round(m)}% on the sensor's calibrated scale). ${moistureStatus(m)[1]}`
+        ? `${moistureStatus(m)[0]} (${Math.round(m)}% on the sensor's calibrated scale).`
         : "Waiting for a valid reading."
     ],
     [
       "🌡️",
       "Temperature",
       Number.isFinite(t)
-        ? `${t.toFixed(1)}°C air temperature. Compare with local seasonal guidance.`
+        ? `${t.toFixed(1)}°C air temperature.`
         : "Waiting for a valid reading."
     ],
     [
       "☁️",
       "Air humidity",
       Number.isFinite(h)
-        ? `${h.toFixed(1)}% relative humidity; this is not soil moisture.`
+        ? `${h.toFixed(1)}% relative humidity.`
         : "Waiting for a valid reading."
     ],
     [
       "🧪",
       "Soil pH",
-      "Not measured. A compatible pH sensor or laboratory soil test is needed."
+      soilPH !== null
+        ? `${soilPH.toFixed(1)} — ${getPHGuidance(soilPH).label}`
+        : "Enter the result from your soil pH test kit."
+    ],
+    [
+      "📍",
+      "Farm location",
+      locationParts.length
+        ? locationParts.join(", ")
+        : "Location not entered."
+    ],
+    [
+      "🌦️",
+      "Cropping season",
+      selectedSeason || "Season not selected."
+    ],
+    [
+      "🌱",
+      "Selected soil type",
+      selectedSoilType === "Not selected"
+        ? "Soil type not selected."
+        : selectedSoilType
     ]
   ];
+
+  if (!$("summary")) return;
 
   $("summary").innerHTML = summary.map(item => `
     <div class="summary">
@@ -512,16 +836,56 @@ function render() {
       </div>
     </div>
   `).join("");
-
-  renderPoints();
 }
 
+// -----------------------------------------------------
+// 16. MAIN DASHBOARD
+// -----------------------------------------------------
 
-// ==========================================
-// 7. FOUR-POINT FIELD SCANNER
-// ==========================================
+function render() {
+  ensureFarmInputs();
+
+  if (!$("moisture")) return;
+
+  const m = Number(current.moisture_percent);
+  const t = Number(current.temperature);
+  const h = Number(current.humidity);
+
+  $("moisture").textContent =
+    Number.isFinite(m) ? Math.round(m) : "--";
+
+  $("temp").textContent =
+    Number.isFinite(t) ? t.toFixed(1) : "--";
+
+  $("humidity").textContent =
+    Number.isFinite(h) ? h.toFixed(1) : "--";
+
+  $("moistureNote").textContent =
+    Number.isFinite(m) ? moistureStatus(m)[0] : "Unavailable";
+
+  $("moistureBar").style.width =
+    `${Math.max(0, Math.min(100, Number.isFinite(m) ? m : 0))}%`;
+
+  $("tempBar").style.width =
+    `${Math.max(0, Math.min(100, Number.isFinite(t) ? t * 2 : 0))}%`;
+
+  $("humidityBar").style.width =
+    `${Math.max(0, Math.min(100, Number.isFinite(h) ? h : 0))}%`;
+
+  renderCrops();
+  renderSummary();
+  renderPoints();
+  renderPHResult();
+  renderSeasonInfo();
+}
+
+// -----------------------------------------------------
+// 17. FOUR-POINT FIELD SCANNER
+// -----------------------------------------------------
 
 function renderPoints() {
+  if (!$("points")) return;
+
   $("points").innerHTML = points.map(p => `
     <div class="point ${p.name === current.point ? "active" : ""}">
       <b>${p.name}</b>
@@ -543,17 +907,15 @@ function renderPoints() {
   );
 
   $("scanCount").textContent = `${savedCount}/4 points`;
-
   $("doneScan").disabled = !allPointsSaved;
-
-  $("doneScan").textContent =
-    scanComplete ? "Completed ✓" : "Done";
-
+  $("doneScan").textContent = scanComplete ? "Completed ✓" : "Done";
   $("savePoint").disabled = savedCount === 4;
 }
 
+// -----------------------------------------------------
+// 18. SAVE SCANNER POINT
+// -----------------------------------------------------
 
-// Save a reading to the next unscanned point.
 $("savePoint").addEventListener("click", () => {
   const p = points.find(point => !point.saved);
 
@@ -590,10 +952,9 @@ $("savePoint").addEventListener("click", () => {
     `Saved current reading at Point ${p.name}. Move the probe to the next point.`;
 });
 
-
-// ==========================================
-// DONE BUTTON
-// ==========================================
+// -----------------------------------------------------
+// 19. COMPLETE SCAN
+// -----------------------------------------------------
 
 $("doneScan").addEventListener("click", () => {
   const allPointsSaved = points.every(p =>
@@ -609,17 +970,15 @@ $("doneScan").addEventListener("click", () => {
   }
 
   scanComplete = true;
-
   render();
 
   $("scanMessage").textContent =
-    "Field scan complete. Crop match percentages now use the average of all four samples.";
+    "Field scan complete. Crop percentages now use the average of all four samples.";
 });
 
-
-// ==========================================
-// RESET THE SCANNER
-// ==========================================
+// -----------------------------------------------------
+// 20. RESET SCANNER
+// -----------------------------------------------------
 
 $("resetPoints").addEventListener("click", () => {
   scanComplete = false;
@@ -632,17 +991,15 @@ $("resetPoints").addEventListener("click", () => {
   }));
 
   current.point = "A";
-
   render();
 
   $("scanMessage").textContent =
     "Scan reset. Take new readings at Points A, B, C and D.";
 });
 
-
-// ==========================================
-// 8. DEMO MODE
-// ==========================================
+// -----------------------------------------------------
+// 21. DEMO MODE
+// -----------------------------------------------------
 
 $("demo").addEventListener("click", () => {
   current = { ...demo };
@@ -656,10 +1013,9 @@ $("demo").addEventListener("click", () => {
   render();
 });
 
-
-// ==========================================
-// 9. DIRECT ESP32 CONNECTION
-// ==========================================
+// -----------------------------------------------------
+// 22. DIRECT ESP32 CONNECTION
+// -----------------------------------------------------
 
 $("connect").addEventListener("click", async () => {
   const url = $("deviceUrl").value.trim();
@@ -692,11 +1048,13 @@ $("connect").addEventListener("click", async () => {
     const h = Number(hValue);
 
     if (
-      moistureValue == null || tValue == null || hValue == null ||
+      moistureValue == null ||
+      tValue == null ||
+      hValue == null ||
       ![m, t, h].every(Number.isFinite)
     ) {
       throw new Error(
-        "JSON must include numeric moisture (or moisture_percent), temperature and humidity"
+        "JSON must include numeric moisture, temperature and humidity"
       );
     }
 
@@ -727,10 +1085,9 @@ $("connect").addEventListener("click", async () => {
   }
 });
 
-
-// ==========================================
-// 10. FIELD NAME
-// ==========================================
+// -----------------------------------------------------
+// 23. FIELD NAME
+// -----------------------------------------------------
 
 $("fieldName").addEventListener("change", () => {
   const name = $("fieldName").value.trim() || "My Field";
@@ -739,10 +1096,9 @@ $("fieldName").addEventListener("change", () => {
   document.title = `CropSense AI | ${name}`;
 });
 
-
-// ==========================================
-// 11. FIREBASE LIVE SENSOR LISTENER
-// ==========================================
+// -----------------------------------------------------
+// 24. FIREBASE LIVE SENSOR LISTENER
+// -----------------------------------------------------
 
 window.addEventListener("cropsense-live-data", event => {
   const d = event.detail;
@@ -758,7 +1114,9 @@ window.addEventListener("cropsense-live-data", event => {
   const h = Number(hValue);
 
   if (
-    moistureValue == null || tValue == null || hValue == null ||
+    moistureValue == null ||
+    tValue == null ||
+    hValue == null ||
     ![m, t, h].every(Number.isFinite)
   ) {
     console.warn("Invalid Firebase sensor data:", d);
@@ -786,9 +1144,8 @@ window.addEventListener("cropsense-live-data", event => {
   console.log("CropSense dashboard updated:", current);
 });
 
-
-// ==========================================
-// 12. INITIAL DASHBOARD DISPLAY
-// ==========================================
+// -----------------------------------------------------
+// 25. INITIAL DASHBOARD DISPLAY
+// -----------------------------------------------------
 
 render();

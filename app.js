@@ -66,7 +66,6 @@ function moistureStatus(value) {
 // ==========================================
 // 3. CROP DATABASE
 // Targets are illustrative prototype values.
-// They are not validated crop requirements.
 // ==========================================
 
 const cropDatabase = [
@@ -201,10 +200,145 @@ const cropCategories = {
 
 
 // ==========================================
+// 5A. INDIAN SOIL-TYPE GUIDANCE
+// Broad associations, not field-level guarantees.
+// ==========================================
+
+const indianSoilTypes = [
+  "Black soil",
+  "Red and yellow soil",
+  "Alluvial soil",
+  "Laterite soil",
+  "Arid / desert soil",
+  "Mountain / forest soil",
+  "Saline / alkaline soil",
+  "Peaty / marshy soil"
+];
+
+let selectedSoilType = "Not selected";
+
+const cropSoilGuide = {
+  "Rice": ["Alluvial soil", "Peaty / marshy soil"],
+  "Wheat": ["Alluvial soil", "Black soil"],
+  "Maize": ["Alluvial soil", "Red and yellow soil", "Black soil"],
+  "Pearl Millet (Bajra)": ["Arid / desert soil", "Red and yellow soil"],
+  "Sorghum (Jowar)": ["Black soil", "Red and yellow soil"],
+  "Finger Millet (Ragi)": ["Red and yellow soil", "Laterite soil"],
+  "Chickpea (Chana)": ["Black soil", "Alluvial soil"],
+  "Pigeon Pea (Tur)": ["Black soil", "Red and yellow soil"],
+  "Green Gram (Moong)": ["Alluvial soil", "Red and yellow soil", "Arid / desert soil"],
+  "Black Gram (Urad)": ["Black soil", "Alluvial soil"],
+  "Soybean": ["Black soil", "Red and yellow soil"],
+  "Groundnut": ["Red and yellow soil", "Alluvial soil", "Black soil"],
+  "Mustard": ["Alluvial soil", "Arid / desert soil"],
+  "Sesame (Til)": ["Red and yellow soil", "Arid / desert soil"],
+  "Safflower (Kusum)": ["Black soil", "Red and yellow soil"],
+  "Cotton": ["Black soil", "Alluvial soil"],
+  "Sugarcane": ["Alluvial soil", "Black soil"],
+  "Jute": ["Alluvial soil"],
+  "Tobacco": ["Alluvial soil", "Black soil"],
+  "Tomato": ["Alluvial soil", "Red and yellow soil", "Black soil"],
+  "Potato": ["Alluvial soil", "Mountain / forest soil"],
+  "Onion": ["Alluvial soil", "Black soil", "Red and yellow soil"],
+  "Garlic": ["Alluvial soil", "Black soil"],
+  "Green Chilli": ["Alluvial soil", "Black soil", "Red and yellow soil"],
+  "Brinjal (Eggplant)": ["Alluvial soil", "Black soil", "Red and yellow soil"],
+  "Okra (Bhindi)": ["Alluvial soil", "Black soil", "Red and yellow soil"],
+  "Cabbage": ["Alluvial soil", "Mountain / forest soil"],
+  "Cauliflower": ["Alluvial soil", "Mountain / forest soil"],
+  "Spinach": ["Alluvial soil", "Black soil"],
+  "Cucumber": ["Alluvial soil", "Red and yellow soil"],
+  "Pumpkin": ["Alluvial soil", "Red and yellow soil"],
+  "Bitter Gourd": ["Alluvial soil", "Red and yellow soil"],
+  "Bottle Gourd": ["Alluvial soil", "Black soil"],
+  "Carrot": ["Alluvial soil", "Mountain / forest soil"],
+  "Radish": ["Alluvial soil", "Red and yellow soil"],
+  "Beetroot": ["Alluvial soil", "Black soil"],
+  "Sweet Potato": ["Red and yellow soil", "Laterite soil"],
+  "Tapioca (Cassava)": ["Red and yellow soil", "Laterite soil"],
+  "Banana": ["Alluvial soil", "Black soil", "Laterite soil"],
+  "Mango": ["Red and yellow soil", "Laterite soil", "Alluvial soil"],
+  "Sweet Orange": ["Black soil", "Alluvial soil"],
+  "Lemon": ["Alluvial soil", "Red and yellow soil"],
+  "Guava": ["Alluvial soil", "Red and yellow soil"],
+  "Papaya": ["Alluvial soil", "Red and yellow soil"],
+  "Pomegranate": ["Black soil", "Red and yellow soil"],
+  "Grapes": ["Black soil", "Alluvial soil"],
+  "Watermelon": ["Alluvial soil", "Arid / desert soil"],
+  "Muskmelon": ["Alluvial soil", "Arid / desert soil"],
+  "Apple": ["Mountain / forest soil"],
+  "Coconut": ["Laterite soil", "Alluvial soil"],
+  "Turmeric": ["Red and yellow soil", "Laterite soil", "Alluvial soil"],
+  "Ginger": ["Laterite soil", "Red and yellow soil"],
+  "Coriander": ["Alluvial soil", "Black soil"],
+  "Cumin (Jeera)": ["Arid / desert soil", "Alluvial soil"],
+  "Fennel (Saunf)": ["Alluvial soil", "Arid / desert soil"],
+  "Fenugreek (Methi)": ["Alluvial soil", "Black soil"],
+  "Black Pepper": ["Laterite soil"]
+};
+
+
+// Add soil selector above crop cards.
+function ensureSoilSelector() {
+  if ($("soilTypeSelect")) return;
+
+  const cropsContainer = $("crops");
+  if (!cropsContainer) return;
+
+  const wrapper = document.createElement("div");
+  wrapper.className = "soil-type-filter";
+  wrapper.style.cssText =
+    "margin:12px 0 16px;padding:12px;border:1px solid #d8e6dc;border-radius:12px;background:#f5faf6;";
+
+  const label = document.createElement("label");
+  label.htmlFor = "soilTypeSelect";
+  label.textContent =
+    "Select your Indian soil type (farmer-selected):";
+  label.style.cssText =
+    "display:block;font-weight:600;margin-bottom:7px;";
+
+  const select = document.createElement("select");
+  select.id = "soilTypeSelect";
+  select.style.cssText =
+    "width:100%;max-width:100%;padding:10px;border:1px solid #b8cdbd;border-radius:8px;background:white;";
+
+  const first = document.createElement("option");
+  first.value = "Not selected";
+  first.textContent = "Choose soil type";
+  select.appendChild(first);
+
+  indianSoilTypes.forEach(type => {
+    const option = document.createElement("option");
+    option.value = type;
+    option.textContent = type;
+    select.appendChild(option);
+  });
+
+  select.value = selectedSoilType;
+
+  select.addEventListener("change", () => {
+    selectedSoilType = select.value;
+    render();
+  });
+
+  const note = document.createElement("p");
+  note.textContent =
+    "This is a manual selection, not a sensor measurement. Soil type alone cannot decide the best crop.";
+  note.style.cssText =
+    "font-size:0.85em;margin:8px 0 0;color:#52665a;";
+
+  wrapper.append(label, select, note);
+  cropsContainer.parentNode.insertBefore(wrapper, cropsContainer);
+}
+
+
+// ==========================================
 // 6. MAIN DASHBOARD
 // ==========================================
 
 function render() {
+  ensureSoilSelector();
+
   const m = Number(current.moisture_percent);
   const t = Number(current.temperature);
   const h = Number(current.humidity);
@@ -286,20 +420,49 @@ function render() {
           <h3>${title}</h3>
 
           <div class="crop-row">
-            ${items.map(c => `
-              <article class="crop crop-card">
-                <div class="cropicon">${c.emoji}</div>
-                <b>${c.name}</b>
-                <span class="crop-type">${c.category}</span>
+            ${items.map(c => {
+              const suitableSoils = cropSoilGuide[c.name] || [];
+              const matchesSelectedSoil =
+                suitableSoils.includes(selectedSoilType);
 
-                ${showScores ? `
-                  <div class="score">
-                    ${c.score}%
-                    <small>Prototype match</small>
-                  </div>
-                ` : ""}
-              </article>
-            `).join("")}
+              return `
+                <article class="crop crop-card">
+                  <div class="cropicon">${c.emoji}</div>
+
+                  <b>${c.name}</b>
+
+                  <span class="crop-type">${c.category}</span>
+
+                  <small class="soil-suitability"
+                    style="display:block;margin-top:6px;color:#52665a;">
+                    <b>Often suitable soil:</b>
+                    ${suitableSoils.length
+                      ? suitableSoils.join(", ")
+                      : "Varies; check local soil conditions"}
+                  </small>
+
+                  ${selectedSoilType !== "Not selected" ? `
+                    <small style="
+                      display:block;
+                      margin-top:4px;
+                      font-weight:600;
+                      color:${matchesSelectedSoil ? "#247344" : "#8a5a16"};
+                    ">
+                      ${matchesSelectedSoil
+                        ? "✓ Listed for selected soil"
+                        : "Not listed for selected soil"}
+                    </small>
+                  ` : ""}
+
+                  ${showScores ? `
+                    <div class="score">
+                      ${c.score}%
+                      <small>Prototype match</small>
+                    </div>
+                  ` : ""}
+                </article>
+              `;
+            }).join("")}
           </div>
         </section>
       `;
@@ -381,13 +544,11 @@ function renderPoints() {
 
   $("scanCount").textContent = `${savedCount}/4 points`;
 
-  // Done is enabled only when all four valid readings are saved.
   $("doneScan").disabled = !allPointsSaved;
 
   $("doneScan").textContent =
     scanComplete ? "Completed ✓" : "Done";
 
-  // Do not allow more readings after all four points are saved.
   $("savePoint").disabled = savedCount === 4;
 }
 
@@ -420,9 +581,7 @@ $("savePoint").addEventListener("click", () => {
   p.temp = t;
   p.saved = true;
 
-  // Scores must be confirmed again by clicking Done.
   scanComplete = false;
-
   current.point = p.name;
 
   render();
@@ -524,8 +683,6 @@ $("connect").addEventListener("click", async () => {
 
     const d = await response.json();
 
-    // ESP32 currently sends the key "moisture".
-    // Also accept "moisture_percent" for compatibility with older firmware.
     const moistureValue = d.moisture_percent ?? d.moisture;
     const tValue = d.temperature;
     const hValue = d.humidity;
@@ -592,8 +749,6 @@ window.addEventListener("cropsense-live-data", event => {
 
   if (!d) return;
 
-  // ESP32 currently uploads "moisture".
-  // Also accept "moisture_percent".
   const moistureValue = d.moisture_percent ?? d.moisture;
   const tValue = d.temperature;
   const hValue = d.humidity;

@@ -1,4 +1,3 @@
-
 "use strict";
 
 // ==========================================
@@ -525,13 +524,22 @@ $("connect").addEventListener("click", async () => {
 
     const d = await response.json();
 
-    const m = Number(d.moisture_percent);
-    const t = Number(d.temperature);
-    const h = Number(d.humidity);
+    // ESP32 currently sends the key "moisture".
+    // Also accept "moisture_percent" for compatibility with older firmware.
+    const moistureValue = d.moisture_percent ?? d.moisture;
+    const tValue = d.temperature;
+    const hValue = d.humidity;
 
-    if (![m, t, h].every(Number.isFinite)) {
+    const m = Number(moistureValue);
+    const t = Number(tValue);
+    const h = Number(hValue);
+
+    if (
+      moistureValue == null || tValue == null || hValue == null ||
+      ![m, t, h].every(Number.isFinite)
+    ) {
       throw new Error(
-        "JSON must include numeric moisture_percent, temperature and humidity"
+        "JSON must include numeric moisture (or moisture_percent), temperature and humidity"
       );
     }
 
@@ -584,11 +592,20 @@ window.addEventListener("cropsense-live-data", event => {
 
   if (!d) return;
 
-  const m = Number(d.moisture_percent);
-  const t = Number(d.temperature);
-  const h = Number(d.humidity);
+  // ESP32 currently uploads "moisture".
+  // Also accept "moisture_percent".
+  const moistureValue = d.moisture_percent ?? d.moisture;
+  const tValue = d.temperature;
+  const hValue = d.humidity;
 
-  if (![m, t, h].every(Number.isFinite)) {
+  const m = Number(moistureValue);
+  const t = Number(tValue);
+  const h = Number(hValue);
+
+  if (
+    moistureValue == null || tValue == null || hValue == null ||
+    ![m, t, h].every(Number.isFinite)
+  ) {
     console.warn("Invalid Firebase sensor data:", d);
     return;
   }
@@ -620,4 +637,3 @@ window.addEventListener("cropsense-live-data", event => {
 // ==========================================
 
 render();
-

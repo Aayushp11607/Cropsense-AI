@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -26,7 +27,7 @@
       <p>Better Choice, Greener Tomorrow.</p>
     </div>
 
-    <span id="status" class="status">Connecting to Firebase...</span>
+    <span id="status" class="status">Demo data</span>
   </header>
 
   <main class="wrap">
@@ -51,7 +52,6 @@
       <div class="heroemoji">🌾</div>
     </section>
 
-
     <!-- FIELD OVERVIEW -->
     <section class="sectionhead">
       <div>
@@ -70,11 +70,9 @@
       </label>
     </section>
 
-
     <!-- SENSOR METRICS -->
     <section class="metrics">
 
-      <!-- SOIL MOISTURE -->
       <article>
         <div class="icon">💧 <small>SOIL</small></div>
 
@@ -84,15 +82,13 @@
           <span id="moisture">35</span><em>%</em>
         </strong>
 
-        <p id="moistureNote" class="muted">Waiting for sensor data</p>
+        <p id="moistureNote" class="muted">Moderate-low</p>
 
         <div class="bar">
           <span id="moistureBar" style="width:35%"></span>
         </div>
       </article>
 
-
-      <!-- TEMPERATURE -->
       <article>
         <div class="icon">🌡️ <small>AIR</small></div>
 
@@ -109,8 +105,6 @@
         </div>
       </article>
 
-
-      <!-- AIR HUMIDITY -->
       <article>
         <div class="icon">☁️ <small>AIR</small></div>
 
@@ -128,7 +122,6 @@
       </article>
 
     </section>
-
 
     <!-- FIELD SCANNER AND CROP SUGGESTIONS -->
     <section class="columns">
@@ -154,7 +147,6 @@
         <div id="points" class="points"></div>
 
         <div class="buttons">
-
           <button id="savePoint" type="button">
             ＋ Save Current Reading
           </button>
@@ -175,16 +167,14 @@
           >
             Reset Points
           </button>
-
         </div>
 
         <p id="scanMessage" class="helper">
-          Save readings at Points A, B, C and D.
-          Crop match percentages will appear after you complete the scan.
+          Save readings at Points A, B, C and D. Crop match percentages
+          will appear after you complete the scan.
         </p>
 
       </article>
-
 
       <!-- CROP GUIDANCE -->
       <article class="panel">
@@ -199,54 +189,35 @@
         </div>
 
         <p class="muted">
-          Explore crops in each category. Complete the four-point scan
-          and select Done to reveal preliminary prototype match percentages.
+          Explore crops in each category. Scroll horizontally to see
+          more suggestions. Complete the four-point scan and select Done
+          to reveal preliminary prototype match percentages.
         </p>
 
-        <!-- GPS LOCATION PANEL WILL BE PLACED HERE BY app.js -->
-        <div id="farmLocationSlot"></div>
-
-        <!-- app.js creates farm details and crop categories here -->
         <div id="crops"></div>
-
-        <div class="notice">
-          <b>Important:</b>
-          These are experimental prototype matches, not validated
-          agricultural recommendations. The current model uses soil
-          moisture and air temperature only. Soil pH, soil type,
-          location, season, rainfall, irrigation and crop variety
-          are not fully evaluated. Consult a local agriculture officer
-          or Krishi Vigyan Kendra before making planting decisions.
-        </div>
 
       </article>
 
     </section>
 
-
-    <!-- FIELD SUMMARY AND PLANT CARE -->
+    <!-- FIELD SUMMARY AFTER ALL CROP SUGGESTIONS -->
     <section class="columns">
 
-      <!-- FIELD SUMMARY -->
       <article class="panel">
         <small>FIELD SUMMARY</small>
-        <h2>What the readings mean</h2>
+        <h2>Field Summary — What the readings mean</h2>
 
         <div id="summary"></div>
       </article>
 
-
-      <!-- PLANT CARE -->
       <article class="panel">
         <small>PLANT CARE</small>
         <h2>Helpful next steps</h2>
 
         <div class="care">
           <span>💧</span>
-
           <div>
             <b>Check moisture before watering</b>
-
             <p>
               Probe a few places, not just the field edge.
               Avoid watering only because the surface looks dry.
@@ -256,10 +227,8 @@
 
         <div class="care">
           <span>🌤️</span>
-
           <div>
             <b>Track changing conditions</b>
-
             <p>
               Readings change with sunlight, rain, irrigation
               and time of day.
@@ -269,10 +238,8 @@
 
         <div class="care">
           <span>🧪</span>
-
           <div>
             <b>Test soil before planting</b>
-
             <p>
               Use a soil-testing service for pH and nutrients
               before making fertilizer decisions.
@@ -282,10 +249,8 @@
 
         <div class="care">
           <span>👩‍🌾</span>
-
           <div>
             <b>Ask a local expert</b>
-
             <p>
               Choose crops suited to your season, soil,
               water availability and local agricultural guidance.
@@ -297,26 +262,63 @@
 
     </section>
 
+    <!-- DEVICE CONNECTION -->
+    <section class="panel connection">
 
-    <!-- DEMO DATA CONTROL -->
-    <section class="panel">
-      <div class="panelhead">
-        <div>
-          <small>DEMO MODE</small>
-          <h2>Project demonstration</h2>
-        </div>
-      </div>
+      <small>DEVICE CONNECTION</small>
+      <h2>Connect your ESP32</h2>
 
       <p class="muted">
-        Use sample readings to demonstrate the dashboard when live
-        sensor data is unavailable.
+        Your ESP32 sends sensor readings to Firebase. You can also
+        connect directly to its local data endpoint when your browser
+        and ESP32 can communicate over the network. Direct access may
+        require correct CORS settings.
       </p>
 
-      <button id="demo" class="secondary" type="button">
-        Use Demo Data
-      </button>
-    </section>
+      <div class="connect">
 
+        <label>
+          ESP32 data URL
+          <input
+            id="deviceUrl"
+            type="url"
+            placeholder="http://192.168.4.1/data"
+          >
+        </label>
+
+        <button id="connect" type="button">
+          Connect &amp; Refresh
+        </button>
+
+        <button id="demo" class="secondary" type="button">
+          Use Demo Data
+        </button>
+
+      </div>
+
+      <p id="deviceMessage" class="helper">
+        Waiting for a live Firebase reading or direct ESP32 connection.
+      </p>
+
+      <details>
+        <summary>Expected ESP32 data format</summary>
+
+        <pre>{
+  "moisture_raw": 2470,
+  "moisture_percent": 35,
+  "temperature": 27.8,
+  "humidity": 54.2,
+  "point": "A"
+}</pre>
+
+        <p class="helper">
+          Direct connection requires the ESP32 firmware to provide
+          a JSON endpoint at the entered URL. Firebase live updates
+          are handled separately by firebase-live.js.
+        </p>
+      </details>
+
+    </section>
 
     <!-- TEAM DIGITAL AURA -->
     <section class="panel team-section">
@@ -351,7 +353,6 @@
 
       </div>
 
-
       <!-- PROJECT CONTRIBUTIONS -->
       <div class="contributions">
 
@@ -359,27 +360,28 @@
 
         <p>
           As Team Digital Aura, we are working to make crop exploration
-          more accessible to farmers through a technology-based prototype.
+          more accessible to farmers through a technology-based
+          prototype.
         </p>
 
         <ul>
           <li>
             Developed a prototype for preliminary crop suggestions.
           </li>
-
           <li>
             Integrated ESP32-based soil moisture and air-condition sensing.
           </li>
-
           <li>
             Connected Firebase to receive and display live sensor data.
           </li>
-
           <li>
             Designed a dashboard to help users explore crop options
             and understand field readings.
           </li>
-
+          <li>
+            Integrated GPS-based weather forecasting to consider
+            upcoming temperature and rainfall conditions in crop screening.
+          </li>
           <li>
             Encouraged informed farming decisions using field data
             and local agricultural guidance.
@@ -394,7 +396,6 @@
 
     </section>
 
-
     <!-- FOOTER -->
     <footer>
       <span>CropSense AI · Team Digital Aura</span>
@@ -403,15 +404,14 @@
 
   </main>
 
+  <!-- GPS location detection -->
+  <script src="gps-location.js"></script>
 
-  <!-- DASHBOARD JAVASCRIPT -->
+  <!-- Dashboard JavaScript -->
   <script src="app.js"></script>
 
-  <!-- FIREBASE LIVE SENSOR UPDATES -->
+  <!-- Firebase live sensor updates -->
   <script type="module" src="firebase-live.js"></script>
-
-  <!-- GPS LOCATION -->
-  <script src="gps-location.js"></script>
 
 </body>
 </html>

@@ -555,18 +555,7 @@ function ensureFarmInputs() {
     <p style="font-size:0.85em;margin:8px 0 0;color:#52665a;">
       Select the soil type based on your knowledge or local soil information. This is a farmer input, not a sensor measurement.
     </p>
-
-    <!-- FIELD SUMMARY RESTORED -->
-    <hr style="border:0;border-top:1px solid #d8e6dc;margin:18px 0;">
-    <section id="fieldSummarySection">
-      <h3 style="margin:0 0 10px;">📋 Field Summary</h3>
-      <p style="font-size:0.9em;color:#52665a;margin:0 0 12px;">
-        A quick overview of your field conditions, sensor readings and selected farm details.
-      </p>
-      <div id="fieldSummary" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px;"></div>
-    </section>
-
-    <hr style="border:0;border-top:1px solid #d8e6dc;margin:18px 0;">
+<hr style="border:0;border-top:1px solid #d8e6dc;margin:18px 0;">
 
     <hr style="border:0;border-top:1px solid #d8e6dc;margin:18px 0;">
 
@@ -595,6 +584,10 @@ function ensureFarmInputs() {
       <div id="weatherCurrent" style="margin-top:12px;"></div>
 
       <div id="weatherForecast" style="margin-top:12px;"></div>
+      <div id="weatherCropImpact" aria-live="polite"
+        style="margin-top:12px;padding:11px;border:1px solid #d8e6dc;border-radius:9px;background:white;font-size:0.88em;color:#435448;">
+        Weather-based crop screening will appear after the farm location forecast loads.
+      </div>
 
       <p style="font-size:0.82em;color:#52665a;">
         Forecasts can change. Always check local weather alerts before
@@ -702,6 +695,7 @@ function watchGPSPanel() {
 // -----------------------------------------------------
 
 let weatherRequestId = 0;
+let cropWeatherOutlook = null;
 
 function getCoordinates(location) {
   if (!location) return null;
@@ -778,6 +772,10 @@ function weatherIcon(code) {
   return "🌦️";
 }
 
+function showWeatherRankingNote() {
+  return "The forecast contributes a short-term weather factor to crop ranking when the four-point scan is complete. It does not represent the full growing season.";
+}
+
 async function loadFarmWeather(location) {
   const coords = getCoordinates(location);
 
@@ -792,6 +790,9 @@ async function loadFarmWeather(location) {
   const requestId = ++weatherRequestId;
   setWeatherStatus("Fetching current weather and 5-day forecast for your detected location...");
 
+  cropWeatherOutlook = null;
+  renderCrops();
+
   const currentBox = $("weatherCurrent");
   const forecastBox = $("weatherForecast");
   if (currentBox) currentBox.innerHTML = "";
@@ -802,7 +803,7 @@ async function loadFarmWeather(location) {
     latitude: String(coords.latitude),
     longitude: String(coords.longitude),
     current: "temperature_2m,relative_humidity_2m,apparent_temperature,precipitation,weather_code,wind_speed_10m",
-    daily: "weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max",
+    daily: "weather_code,temperature_2m_max,temperature_2m_min,temperature_2m_mean,precipitation_probability_max,precipitation_sum",
     timezone: "auto",
     forecast_days: "5"
   }).toString();
@@ -820,6 +821,26 @@ async function loadFarmWeather(location) {
     }
 
     const now = data.current;
+
+    // Five-day outlook used as a short-term weather factor in crop ranking.
+    // This is not a full-season climate suitability assessment.
+    const dailyMeanTemps = (data.daily.temperature_2m_mean || []).filter(Number.isFinite);
+    const dailyRainTotals = (data.daily.precipitation_sum || []).filter(Number.isFinite);
+    cropWeatherOutlook = {
+      meanTemperature: dailyMeanTemps.length
+        ? dailyMeanTemps.reduce((sum, value) => sum + value, 0) / dailyMeanTemps.length
+        : null,
+      totalRainfall: dailyRainTotals.length
+        ? dailyRainTotals.reduce((sum, value) => sum + value, 0)
+        : null,
+      rainProbability: (data.daily.precipitation_probability_max || [])
+        .filter(Number.isFinite)
+        .reduce((sum, value, _, arr) => sum + value / arr.length, 0),
+      days: data.daily.time.length,
+      fetchedAt: Date.now()
+    };
+
+    const nowCode = Number(now.weather_code);
     const currentCode = Number(now.weather_code);
     if (currentBox) {
       currentBox.innerHTML = `
@@ -876,9 +897,27 @@ async function loadFarmWeather(location) {
     setWeatherStatus(
       `Weather loaded for ${place || "your GPS coordinates"} · ${coords.latitude.toFixed(4)}, ${coords.longitude.toFixed(4)}`
     );
+
+    // Refresh crop ordering so the latest forecast is considered.
+    renderCrops();
+
+    const impactBox = $("weatherCropImpact");
+    if (impactBox && cropWeatherOutlook) {
+      const rainText = cropWeatherOutlook.totalRainfall === null
+        ? "rainfall total unavailable"
+        : `${cropWeatherOutlook.totalRainfall.toFixed(1)} mm expected over ${cropWeatherOutlook.days} days`;
+      const tempText = cropWeatherOutlook.meanTemperature === null
+        ? "temperature average unavailable"
+        : `${cropWeatherOutlook.meanTemperature.toFixed(1)}°C average daily temperature`;
+      impactBox.innerHTML = `<b>🌱 Weather impact on crop screening</b><br>
+        Forecast input: ${tempText}; ${rainText}.<br>
+        ${showWeatherRankingNote()}`;
+    }
   } catch (error) {
     if (requestId !== weatherRequestId) return;
     console.error("CropSense weather error:", error);
+    cropWeatherOutlook = null;
+    renderCrops();
     setWeatherStatus(
       "Unable to load weather. Check your internet connection and try Refresh Weather.",
       true
@@ -1147,6 +1186,59 @@ function renderSuitabilityProgress() {
 }
 
 // -----------------------------------------------------
+// WEATHER-BASED CROP SCREENING
+// Uses the next 5 days only; not a full-season prediction.
+// Rainfall bands are broad category-level screening ranges.
+ // -----------------------------------------------------
+
+const shortRangeRainBands = {
+  "Cereal": [5, 45],
+  "Millet": [0, 30],
+  "Pulse": [3, 35],
+  "Oilseed/Pulse": [3, 35],
+  "Oilseed": [3, 35],
+  "Cash crop": [10, 60],
+  "Fibre crop": [10, 60],
+  "Vegetable": [8, 50],
+  "Root crop": [5, 40],
+  "Fruit": [8, 55],
+  "Plantation crop": [12, 65],
+  "Spice": [10, 55]
+};
+
+function getWeatherFit(crop) {
+  if (
+    !cropWeatherOutlook ||
+    !Number.isFinite(cropWeatherOutlook.meanTemperature) ||
+    !Number.isFinite(cropWeatherOutlook.totalRainfall)
+  ) return null;
+
+  const tempDifference = Math.abs(
+    cropWeatherOutlook.meanTemperature - crop.targetT
+  );
+  const temperatureFit = Math.max(0, 100 - tempDifference * 7);
+
+  const band = shortRangeRainBands[crop.category] || [5, 50];
+  const rain = cropWeatherOutlook.totalRainfall;
+  let rainfallFit = 100;
+
+  if (rain < band[0]) {
+    rainfallFit = Math.max(0, 100 - (band[0] - rain) * 2);
+  } else if (rain > band[1]) {
+    rainfallFit = Math.max(0, 100 - (rain - band[1]) * 1.5);
+  }
+
+  return Math.round(temperatureFit * 0.65 + rainfallFit * 0.35);
+}
+
+function getWeatherOutlookLabel(fit) {
+  if (fit === null) return "Weather forecast not available";
+  if (fit >= 80) return "Near-term weather looks favourable";
+  if (fit >= 60) return "Review upcoming weather conditions";
+  return "Near-term weather may be challenging";
+}
+
+// -----------------------------------------------------
 // 19. CROP RECOMMENDATION DISPLAY
 // -----------------------------------------------------
 
@@ -1168,17 +1260,25 @@ function renderCrops() {
     : NaN;
 
   const cropData = cropDatabase
-    .map(c => ({
-      ...c,
-      score: showScores
-        ? score(
-            averageMoisture,
-            averageTemperature,
-            c.targetM,
-            c.targetT
-          )
-        : null
-    }))
+    .map(c => {
+      const fieldScore = showScores
+        ? score(averageMoisture, averageTemperature, c.targetM, c.targetT)
+        : null;
+      const weatherFit = getWeatherFit(c);
+
+      // Weather contributes 25% of the combined ranking only when
+      // the four-point field scan and location forecast are both available.
+      const combinedScore = showScores && weatherFit !== null
+        ? Math.round(fieldScore * 0.75 + weatherFit * 0.25)
+        : fieldScore;
+
+      return {
+        ...c,
+        fieldScore,
+        weatherFit,
+        score: combinedScore
+      };
+    })
     .sort((a, b) => {
       if (!showScores) return a.name.localeCompare(b.name);
       return b.score - a.score;
@@ -1237,7 +1337,16 @@ function renderCrops() {
 
                   ${showScores ? `
                     <div class="score">${c.score}%</div>
-                  ` : ""}
+                    <small style="display:block;margin-top:4px;color:#52665a;">
+                      ${c.weatherFit === null
+                        ? "Field-condition score"
+                        : `Combined field + weather score · Weather fit ${c.weatherFit}%`}
+                    </small>
+                  ` : (c.weatherFit !== null ? `
+                    <small style="display:block;margin-top:5px;color:#52665a;">
+                      ${getWeatherOutlookLabel(c.weatherFit)}
+                    </small>
+                  ` : "")}
                 </article>
               `;
             }).join("")}
@@ -1253,7 +1362,7 @@ function renderCrops() {
 // -----------------------------------------------------
 
 function renderFieldSummary() {
-  const box = $("fieldSummary");
+  const box = $("summary");
   if (!box) return;
 
   const moisture = Number(current.moisture_percent);

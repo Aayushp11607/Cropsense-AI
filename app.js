@@ -441,6 +441,8 @@ function ensureFarmInputs() {
   `;
 
   panel.innerHTML = `
+    <div id="farmLocationSlot"></div>
+
     <h3 style="margin:0 0 12px;">🌱 Your Farm Details</h3>
 
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;">
@@ -605,12 +607,13 @@ function ensureFarmInputs() {
 
 function arrangeFarmSections() {
   const gpsBox = $("gpsLocationBox");
-  const farmInputs = $("farmInputs");
+  const locationSlot = $("farmLocationSlot");
 
-  if (!gpsBox || !farmInputs || !farmInputs.parentNode) return;
+  if (!gpsBox || !locationSlot) return;
 
-  if (gpsBox.parentNode === farmInputs.parentNode) {
-    farmInputs.parentNode.insertBefore(gpsBox, farmInputs);
+  // Keep Farm Location at the top of the Farm Inputs panel.
+  if (gpsBox.parentNode !== locationSlot) {
+    locationSlot.appendChild(gpsBox);
   }
 }
 
@@ -816,9 +819,22 @@ function handlePHPhoto(event) {
 // -----------------------------------------------------
 
 function hasAllSuitabilityInputs() {
+  const phInput = $("soilPHInput");
+  const seasonInput = $("farmSeason");
+  const soilInput = $("soilTypeSelect");
+
+  const phText = phInput ? phInput.value.trim() : "";
+  const parsedPH = phText === "" ? NaN : Number(phText);
+
+  soilPH = Number.isFinite(parsedPH) && parsedPH >= 0 && parsedPH <= 14
+    ? parsedPH
+    : null;
+
+  selectedSeason = seasonInput ? seasonInput.value : "";
+  selectedSoilType = soilInput ? soilInput.value : "";
+
   return (
     soilPH !== null &&
-    Number.isFinite(soilPH) &&
     selectedSeason !== "" &&
     selectedSoilType !== ""
   );
@@ -866,13 +882,9 @@ function renderSuitabilityProgress() {
   const box = $("suitabilityProgress");
   if (!box) return;
 
-  const completed = [
-    soilPH !== null,
-    selectedSeason !== "",
-    selectedSoilType !== ""
-  ].filter(Boolean).length;
+  const complete = hasAllSuitabilityInputs();
 
-  if (completed < 3) {
+  if (!complete) {
     const missing = [];
 
     if (soilPH === null) missing.push("pH test result");
@@ -881,13 +893,13 @@ function renderSuitabilityProgress() {
 
     box.style.background = "#edf4ee";
     box.textContent =
-      `Completed ${completed}/3 inputs. Please enter: ${missing.join(", ")}.`;
+      `Complete all 3 inputs. Still required: ${missing.join(", ")}.`;
     return;
   }
 
   box.style.background = "#e5f4e9";
   box.textContent =
-    "All three inputs are complete. Preliminary crop suitability results are now displayed.";
+    "All 3 inputs completed. Preliminary crop suitability results are displayed.";
 }
 
 // -----------------------------------------------------
@@ -1238,83 +1250,18 @@ $("demo").addEventListener("click", () => {
   $("status").textContent = "Demo data";
   $("status").classList.remove("live");
 
-  $("deviceMessage").textContent =
-    "Using sample data. This is not a live sensor connection.";
+  if ($("deviceMessage")) {
+    $("deviceMessage").textContent =
+      "Using sample data. This is not a live sensor connection.";
+  }
 
   render();
 });
 
 // -----------------------------------------------------
-// 27. DIRECT ESP32 CONNECTION
+// 27. DIRECT ESP32 CONNECTION REMOVED
+// Sensor readings are received through Firebase.
 // -----------------------------------------------------
-
-$("connect").addEventListener("click", async () => {
-  const url = $("deviceUrl").value.trim();
-
-  if (!url) {
-    $("deviceMessage").textContent =
-      "Enter the ESP32 data URL first.";
-    return;
-  }
-
-  try {
-    $("deviceMessage").textContent = "Requesting readings…";
-
-    const response = await fetch(url, {
-      cache: "no-store"
-    });
-
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
-    }
-
-    const d = await response.json();
-
-    const moistureValue = d.moisture_percent ?? d.moisture;
-    const tValue = d.temperature;
-    const hValue = d.humidity;
-
-    const m = Number(moistureValue);
-    const t = Number(tValue);
-    const h = Number(hValue);
-
-    if (
-      moistureValue == null ||
-      tValue == null ||
-      hValue == null ||
-      ![m, t, h].every(Number.isFinite)
-    ) {
-      throw new Error(
-        "JSON must include numeric moisture, temperature and humidity"
-      );
-    }
-
-    current = {
-      moisture_raw: Number.isFinite(Number(d.moisture_raw))
-        ? Number(d.moisture_raw)
-        : null,
-      moisture_percent: m,
-      temperature: t,
-      humidity: h,
-      point: String(d.point || "A")
-    };
-
-    $("status").textContent = "ESP32 connected";
-    $("status").classList.add("live");
-
-    $("deviceMessage").textContent =
-      "Readings received from ESP32. Click Connect again to refresh them.";
-
-    render();
-
-  } catch (error) {
-    $("status").textContent = "Not connected";
-    $("status").classList.remove("live");
-
-    $("deviceMessage").textContent =
-      `Could not read ESP32: ${error.message}. Check Wi-Fi, URL, firmware endpoint and browser CORS settings.`;
-  }
-});
 
 // -----------------------------------------------------
 // 28. FIELD NAME
@@ -1367,8 +1314,10 @@ window.addEventListener("cropsense-live-data", event => {
   $("status").textContent = "Live Firebase";
   $("status").classList.add("live");
 
-  $("deviceMessage").textContent =
-    "Live sensor readings are updating from Firebase.";
+  if ($("deviceMessage")) {
+    $("deviceMessage").textContent =
+      "Live sensor readings are updating from Firebase.";
+  }
 
   render();
 

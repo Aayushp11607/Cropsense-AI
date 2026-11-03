@@ -1306,6 +1306,8 @@ function renderCrops() {
             ${items.map(c => {
               const result = getCropSuitability(c);
 
+              // Only show the two requested suitability labels.
+              // Keep this area blank until the three required inputs are valid.
               let statusHTML = "";
 
               if (result.status === "suitable") {
@@ -1318,18 +1320,6 @@ function renderCrops() {
                 statusHTML = `
                   <small style="display:block;margin-top:7px;font-weight:700;color:#b34b35;">
                     Unsuitable
-                  </small>
-                `;
-              } else if (result.status === "unknown") {
-                statusHTML = `
-                  <small style="display:block;margin-top:7px;font-weight:600;color:#8a651c;">
-                    Insufficient data
-                  </small>
-                `;
-              } else {
-                statusHTML = `
-                  <small style="display:block;margin-top:7px;color:#64756a;">
-                    Complete all 3 inputs
                   </small>
                 `;
               }

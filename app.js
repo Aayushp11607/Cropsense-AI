@@ -18,6 +18,8 @@ let points = ["A", "B", "C", "D"].map(name => ({
 }));
 
 let scanComplete = false;
+let sensorDataSource = "Waiting for sensor data";
+let latestWeatherSummary = "Not loaded";
 let selectedSeason = "";
 let selectedSoilType = "";
 let soilPH = null;
@@ -320,13 +322,6 @@ function ensureFarmInputs() {
 
     <hr>
 
-    <hr>
-
-    <h3>📋 Field Summary</h3>
-    <div id="summary" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px;margin:10px 0;"></div>
-
-    <hr>
-
     <h3>🌦️ Live Weather & 7-Day Forecast</h3>
     <button id="refreshWeather" type="button">Refresh Weather</button>
     <div id="weatherStatus" style="margin-top:10px"></div>
@@ -335,6 +330,7 @@ function ensureFarmInputs() {
   `;
 
   crops.parentNode.insertBefore(panel, crops);
+  ensureFieldSummary();
 
   $("farmSeason").addEventListener("change", () => {
     selectedSeason = $("farmSeason").value;
@@ -704,7 +700,52 @@ function renderSeason() {
    MAIN RENDER
    ========================================= */
 
+function escapeHTML(value) {
+  return String(value ?? "").replace(/[&<>"']/g, ch => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+  }[ch]));
+}
+
+function ensureFieldSummary() {
+  if ($("fieldSummaryPanel")) return;
+  const crops = $("crops");
+  if (!crops?.parentNode) return;
+
+  const panel = document.createElement("section");
+  panel.id = "fieldSummaryPanel";
+  panel.style.cssText = [
+    "width:100%", "box-sizing:border-box", "margin:18px 0", "padding:18px",
+    "border:1px solid #cfe2d4", "border-radius:16px", "background:#f5faf6",
+    "color:#203328", "box-shadow:0 4px 16px rgba(25,70,40,.06)"
+  ].join(";");
+  panel.innerHTML = `
+    <div style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;">
+      <div>
+        <div style="font-size:12px;letter-spacing:1.2px;font-weight:800;color:#398052;text-transform:uppercase;">CropSense AI • Farm dashboard</div>
+        <h2 style="margin:5px 0;font-size:24px;">📋 Complete Field Summary</h2>
+        <p style="margin:0;color:#617267;">A consolidated view of your field inputs, live readings, soil scan and crop matches.</p>
+      </div>
+      <span id="summaryUpdated" style="font-size:12px;color:#617267;">Waiting for data</span>
+    </div>
+    <div id="summaryStatus" style="margin:14px 0;padding:10px 12px;border-radius:10px;background:#e8f1e9;color:#315d3d;font-size:13px;">Add your field details and sensor readings to complete this summary.</div>
+    <div id="summary" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(165px,1fr));gap:10px;margin:12px 0;"></div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:12px;margin-top:14px;">
+      <div style="background:#fff;border:1px solid #e0e9e2;border-radius:12px;padding:13px;">
+        <h3 style="margin:0 0 9px;font-size:16px;">🧭 Four-point soil scan</h3>
+        <div id="summaryScan"></div>
+      </div>
+      <div style="background:#fff;border:1px solid #e0e9e2;border-radius:12px;padding:13px;">
+        <h3 style="margin:0 0 9px;font-size:16px;">🌱 Crop match overview</h3>
+        <div id="summaryCrops"></div>
+      </div>
+    </div>
+    <p style="margin:12px 0 0;font-size:11px;color:#718078;">Important: moisture is the prototype's calibrated sensor percentage; pH is manually entered from your test kit. Crop matches are indicative prototype guidance, not a guaranteed yield or agronomic recommendation.</p>
+  `;
+  crops.parentNode.insertBefore(panel, crops.parentNode.firstChild);
+}
+
 function renderSummary() {
+  ensureFieldSummary();
   const box = $("summary");
   if (!box) return;
 
@@ -713,31 +754,111 @@ function renderSummary() {
   const h = Number(current.humidity);
   const location = window.cropSenseLocation || {};
   const locationLabel = [
-    location.village_or_locality || location.village || location.locality,
+    location.village_or_locality || location.village || location.locality || location.city,
     location.district,
     location.state || location.principalSubdivision
   ].filter(Boolean).join(", ");
 
-  const rows = [
-    ["Soil moisture", Number.isFinite(m) ? `${Math.round(m)}% — ${moistureStatus(m)[0]}` : "Waiting for sensor reading"],
-    ["Air temperature", Number.isFinite(t) ? `${t.toFixed(1)} °C` : "Waiting for sensor reading"],
-    ["Air humidity", Number.isFinite(h) ? `${h.toFixed(1)}%` : "Waiting for sensor reading"],
-    ["Soil pH", soilPH !== null ? `${soilPH.toFixed(1)} — ${phGuidance(soilPH)[0]}` : "Not entered"],
-    ["Soil type", selectedSoilType || "Not selected"],
-    ["Cropping season", selectedSeason || "Not selected"],
-    ["Farm location", locationLabel || "Optional — not detected"]
+  const scanCount = points.filter(point => point.saved).length;
+  const scanReady = scanComplete && scanCount === 4;
+  const avgM = scanReady ? points.reduce((sum, point) => sum + point.moisture, 0) / 4 : NaN;
+  const avgT = scanReady ? points.reduce((sum, point) => sum + point.temp, 0) / 4 : NaN;
+  const soilPHText = soilPH !== null ? `${soilPH.toFixed(1)} (${phGuidance(soilPH)[0]})` : "Not entered";
+
+  const summaryItems = [
+    ["Sensor connection", sensorDataSource, "ESP32 data through Firebase / demo"],
+    ["Soil moisture", Number.isFinite(m) ? `${Math.round(m)}%` : "Waiting", Number.isFinite(m) ? moistureStatus(m) : "No reading"],
+    ["Air temperature", Number.isFinite(t) ? `${t.toFixed(1)} °C` : "Waiting", "Current sensor reading"],
+    ["Air humidity", Number.isFinite(h) ? `${h.toFixed(1)}%` : "Waiting", "Current sensor reading"],
+    ["Soil pH", soilPHText, "Manual test-kit entry"],
+    ["Soil type", selectedSoilType || "Not selected", "Farm input"],
+    ["Cropping season", selectedSeason || "Not selected", selectedSeason ? (seasons[selectedSeason] || "Selected") : "Farm input"],
+    ["Soil scan", scanReady ? "Completed" : `${scanCount}/4 points`, scanReady ? `Avg. ${avgM.toFixed(1)}% moisture` : "Four locations required"],
+    ["Farm location", locationLabel || "Not detected", locationLabel ? "GPS / browser location" : "Optional — allow location access"],
+    ["Local weather", latestWeatherSummary, "Open-Meteo forecast service"]
   ];
 
-  box.innerHTML = rows.map(([label, value]) => `
-    <div style="padding:10px;background:white;border:1px solid #e0e9e2;border-radius:9px;">
-      <b style="display:block;font-size:0.86em;color:#52665a;">${label}</b>
-      <span>${value}</span>
+  box.innerHTML = summaryItems.map(([label, value, note]) => `
+    <div style="min-width:0;padding:13px;background:#fff;border:1px solid #e0e9e2;border-radius:11px;">
+      <div style="font-size:12px;font-weight:700;color:#617267;margin-bottom:6px;">${escapeHTML(label)}</div>
+      <div style="font-size:18px;font-weight:800;color:#203328;overflow-wrap:anywhere;">${escapeHTML(value)}</div>
+      <div style="font-size:11px;color:#78877e;margin-top:5px;">${escapeHTML(note)}</div>
     </div>
   `).join("");
+
+  const scanBox = $("summaryScan");
+  if (scanBox) {
+    scanBox.innerHTML = `
+      <div style="font-size:13px;color:#53665a;margin-bottom:8px;">${scanReady ? `Average soil moisture: <b>${avgM.toFixed(1)}%</b> • Average air temperature: <b>${avgT.toFixed(1)}°C</b>` : `Scan progress: <b>${scanCount} of 4 points saved</b>`}</div>
+      <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;">
+        ${points.map(point => `<div style="padding:9px 5px;text-align:center;border-radius:8px;background:${point.saved ? '#e8f4eb' : '#f1f3f1'};border:1px solid ${point.saved ? '#cfe2d4' : '#e4e8e4'};"><b style="display:block;">${point.name}</b><span style="font-size:11px;">${point.saved ? `${Number(point.moisture).toFixed(0)}%` : 'Pending'}</span><small style="display:block;color:#68776d;">${point.saved ? `${Number(point.temp).toFixed(1)}°C` : '—'}</small></div>`).join("")}
+      </div>
+      <div style="font-size:11px;color:#78877e;margin-top:8px;">${scanReady ? "All four readings included in the scan average." : "Save readings at A, B, C and D, then select Done to complete the scan."}</div>
+    `;
+  }
+
+  const cropBox = $("summaryCrops");
+  if (cropBox) {
+    if (!hasAllSuitabilityInputs()) {
+      cropBox.innerHTML = `<p style="margin:0;color:#65756a;font-size:13px;">Enter the cropping season, soil type and pH to see crop matches here.</p>`;
+    } else {
+      const matches = cropRows.filter(crop => getCropSuitability(crop).status === "suitable")
+        .map(crop => {
+          const sensorFit = scanReady ? cropScore(avgM, avgT, crop.targetM, crop.targetT) : null;
+          return { ...crop, sensorFit, fit: getFieldMatchScore(crop, sensorFit) };
+        })
+        .sort((a, b) => b.fit - a.fit)
+        .slice(0, 5);
+      cropBox.innerHTML = matches.length
+        ? `<div style="display:flex;flex-wrap:wrap;gap:7px;">${matches.map(crop => `<span style="padding:7px 10px;border-radius:20px;background:#e8f4eb;color:#285b39;font-size:12px;font-weight:700;">${crop.emoji} ${escapeHTML(crop.name)} · ${crop.fit}%</span>`).join("")}</div><p style="font-size:11px;color:#78877e;margin:9px 0 0;">Prototype field-fit indicator; not a probability or yield estimate.</p>`
+        : `<p style="margin:0;color:#65756a;font-size:13px;">No crops in the current prototype database match all selected inputs.</p>`;
+    }
+  }
+
+  const status = $("summaryStatus");
+  if (status) {
+    const missing = [];
+    if (!selectedSeason) missing.push("season");
+    if (!selectedSoilType) missing.push("soil type");
+    if (soilPH === null) missing.push("soil pH");
+    if (!scanReady) missing.push("four-point scan");
+    status.textContent = missing.length
+      ? `Field summary is updating. Complete these items for a fuller field assessment: ${missing.join(", ")}.`
+      : "Field details and four-point scan are complete. Review the crop matches as preliminary guidance.";
+  }
+  safeText("summaryUpdated", `Updated ${new Date().toLocaleTimeString()}`);
+}
+
+function ensureProjectFooter() {
+  if (document.getElementById("cropSenseProjectFooter")) return;
+  const footer = document.createElement("footer");
+  footer.id = "cropSenseProjectFooter";
+  footer.style.cssText = "box-sizing:border-box;width:100%;margin:30px 0 0;padding:26px 20px;background:#142b20;color:#edf6ef;border-radius:18px;line-height:1.65";
+  footer.innerHTML = `
+    <div style="max-width:1100px;margin:0 auto;">
+      <div style="font-size:12px;letter-spacing:2px;text-transform:uppercase;color:#a9d5b5;font-weight:800;">About the project</div>
+      <h2 style="font-size:27px;margin:6px 0 8px;color:#fff;">🌱 CropSense AI</h2>
+      <h3 style="font-size:17px;margin:0 0 14px;color:#bce4c5;">Better Choice, Greener Tomorrow.</h3>
+      <p style="margin:0 0 14px;color:#e0ebe2;">CropSense AI is a smart agriculture prototype designed to help farmers and landowners make more informed early decisions about crop selection. It brings together field sensor readings, basic soil information, local weather and a crop-matching guide in one simple website. The goal is to make useful field information easier to understand before choosing what to grow.</p>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;margin:18px 0;">
+        <section style="padding:14px;border:1px solid #45604e;border-radius:12px;background:#1c3828;"><b style="color:#c7ebce;">How the system works</b><p style="margin:7px 0 0;font-size:13px;color:#e0ebe2;">The ESP32 collects soil-moisture and air temperature/humidity readings. The readings are sent to Firebase Realtime Database, and this website displays the latest available values. GPS can be used to identify the approximate field location and request local weather information.</p></section>
+        <section style="padding:14px;border:1px solid #45604e;border-radius:12px;background:#1c3828;"><b style="color:#c7ebce;">What the website provides</b><p style="margin:7px 0 0;font-size:13px;color:#e0ebe2;">A live sensor dashboard, four-point field scan, manual soil pH and soil-type inputs, cropping-season selection, local weather and a crop-match list based on the information entered.</p></section>
+        <section style="padding:14px;border:1px solid #45604e;border-radius:12px;background:#1c3828;"><b style="color:#c7ebce;">Why it matters</b><p style="margin:7px 0 0;font-size:13px;color:#e0ebe2;">Crop selection can depend on several factors, including soil, moisture, temperature, season and water availability. CropSense AI aims to bring these factors together in an accessible digital tool and encourage more informed, data-aware farming decisions.</p></section>
+      </div>
+      <div style="padding:14px;border-left:4px solid #e3c46b;background:#203b2b;border-radius:8px;margin-top:14px;">
+        <b style="color:#ffe7a6;">Prototype notes and responsible use</b>
+        <p style="margin:6px 0 0;font-size:12px;color:#e4ece5;">This is a developing prototype, not a certified agricultural advisory system. Soil pH is entered manually after using a soil test kit; the uploaded pH-strip image is only a preview and is not automatically analysed. The moisture value is a calibrated sensor-scale percentage, not a laboratory measurement of volumetric water content. Crop-fit scores are indicative comparisons based on the prototype's crop data and sensor readings; they are not probabilities, yield forecasts or guarantees. Confirm crop choices with local agricultural experts and soil-testing services before making investment decisions.</p>
+      </div>
+      <div style="display:flex;flex-wrap:wrap;justify-content:space-between;gap:8px;margin-top:18px;padding-top:14px;border-top:1px solid #45604e;font-size:12px;color:#b9cdbd;">
+        <span>CropSense AI • Team Digital Aura</span><span>Better Choice, Greener Tomorrow.</span>
+      </div>
+    </div>`;
+  document.body.appendChild(footer);
 }
 
 function render() {
   ensureFarmInputs();
+  ensureFieldSummary();
 
   if (!$("moisture")) return;
 
@@ -775,6 +896,7 @@ if ($("demo")) {
       point: "A"
     };
 
+    sensorDataSource = "Demo data";
     safeText("status", "Demo data");
     $("status")?.classList.remove("live");
     render();
@@ -803,6 +925,7 @@ window.addEventListener("cropsense-live-data", event => {
     return;
   }
 
+  sensorDataSource = "Live Firebase data";
   current = {
     moisture_percent: m,
     temperature: t,
@@ -903,7 +1026,9 @@ async function fetchWeather(location) {
     const c = data.current;
     const d = data.daily;
 
+    latestWeatherSummary = `${c.temperature_2m}°C • ${weatherCodes[c.weather_code] || "Current conditions"}`;
     status.textContent = `Weather for ${coords.lat.toFixed(3)}, ${coords.lon.toFixed(3)}`;
+    renderSummary();
 
     currentBox.innerHTML = `
       <div style="padding:12px;margin-top:10px;border:1px solid #ddd;border-radius:10px">
@@ -935,7 +1060,9 @@ async function fetchWeather(location) {
 
   } catch (error) {
     console.error("Weather error:", error);
+    latestWeatherSummary = "Unavailable";
     status.textContent = "Weather unavailable. Check your internet connection.";
+    renderSummary();
   }
 }
 
@@ -960,3 +1087,4 @@ if (window.cropSenseLocation) {
    ========================================= */
 
 render();
+ensureProjectFooter();

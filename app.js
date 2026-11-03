@@ -494,6 +494,12 @@ function ensureFarmInputs() {
 
     <div id="seasonInfo" style="margin-top:10px;font-size:0.9em;color:#52665a;"></div>
 
+    <p style="font-size:0.88em;color:#435448;margin:10px 0 0;">
+      Each crop will be marked <b>Suitable</b> or <b>Unsuitable</b> using these three inputs:
+      soil pH, soil type and cropping season. The 7-day weather outlook is shown separately
+      and also contributes to the preliminary crop ranking.
+    </p>
+
     <div id="suitabilityProgress" aria-live="polite"
       style="margin-top:14px;padding:11px;background:#edf4ee;border-radius:8px;font-size:0.9em;">
       Complete the pH test, cropping season and soil type to check crop suitability.
@@ -774,7 +780,7 @@ function weatherIcon(code) {
 }
 
 function showWeatherRankingNote() {
-  return "The forecast contributes a short-term weather factor to crop ranking when the four-point scan is complete. It does not represent the full growing season.";
+  return "The next 7 days of forecast temperature and rainfall contribute a short-term weather factor to crop ranking when the four-point field scan is complete. This is not a full-season prediction.";
 }
 
 async function loadFarmWeather(location) {
@@ -789,7 +795,7 @@ async function loadFarmWeather(location) {
   }
 
   const requestId = ++weatherRequestId;
-  setWeatherStatus("Fetching current weather and 5-day forecast for your detected location...");
+  setWeatherStatus("Fetching current weather and 7-day forecast for your detected location...");
 
   cropWeatherOutlook = null;
   renderCrops();
@@ -806,7 +812,7 @@ async function loadFarmWeather(location) {
     current: "temperature_2m,relative_humidity_2m,apparent_temperature,precipitation,weather_code,wind_speed_10m",
     daily: "weather_code,temperature_2m_max,temperature_2m_min,temperature_2m_mean,precipitation_probability_max,precipitation_sum",
     timezone: "auto",
-    forecast_days: "5"
+    forecast_days: "7"
   }).toString();
 
   try {
@@ -823,7 +829,7 @@ async function loadFarmWeather(location) {
 
     const now = data.current;
 
-    // Five-day outlook used as a short-term weather factor in crop ranking.
+    // Seven-day outlook used as a short-term weather factor in crop ranking.
     // This is not a full-season climate suitability assessment.
     const dailyMeanTemps = (data.daily.temperature_2m_mean || []).filter(Number.isFinite);
     const dailyRainTotals = (data.daily.precipitation_sum || []).filter(Number.isFinite);
@@ -874,7 +880,7 @@ async function loadFarmWeather(location) {
       }));
 
       forecastBox.innerHTML = `
-        <h4 style="margin:14px 0 8px;">📅 5-Day Weather Forecast</h4>
+        <h4 style="margin:14px 0 8px;">📅 7-Day Weather Forecast</h4>
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(135px,1fr));gap:8px;">
           ${days.map(day => `
             <div style="padding:11px;border:1px solid #d8e6dc;border-radius:10px;background:white;text-align:center;">
@@ -1188,7 +1194,7 @@ function renderSuitabilityProgress() {
 
 // -----------------------------------------------------
 // WEATHER-BASED CROP SCREENING
-// Uses the next 5 days only; not a full-season prediction.
+// Uses the next 7 days only; not a full-season prediction.
 // Rainfall bands are broad category-level screening ranges.
  // -----------------------------------------------------
 
@@ -1335,6 +1341,16 @@ function renderCrops() {
                   <span class="crop-type">${c.category}</span>
 
                   ${statusHTML}
+
+                  ${c.weatherFit !== null ? `
+                    <small style="display:block;margin-top:5px;color:#52665a;">
+                      🌦️ Weather outlook: ${getWeatherOutlookLabel(c.weatherFit)}
+                    </small>
+                  ` : `
+                    <small style="display:block;margin-top:5px;color:#7a7465;">
+                      🌦️ Weather outlook: Waiting for 7-day forecast
+                    </small>
+                  `}
 
                   ${showScores ? `
                     <div class="score">${c.score}%</div>
@@ -1708,7 +1724,7 @@ function addCropSenseProjectInformation() {
       <ul style="padding-left:22px;margin:6px 0;">
         <li>Combines field sensor readings with farmer-provided soil and season information.</li>
         <li>Uses a four-point scan to compare readings from different spots in the field.</li>
-        <li>Displays live weather and a five-day forecast after location detection.</li>
+        <li>Displays live weather and a seven-day forecast after location detection.</li>
         <li>Presents crop options in a simple, accessible dashboard.</li>
         <li>Encourages data-informed farming decisions rather than relying only on guesswork.</li>
       </ul>

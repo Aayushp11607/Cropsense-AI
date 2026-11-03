@@ -489,6 +489,7 @@ function ensureFarmInputs() {
           <option value="Perennial">Perennial / Year-round</option>
         </select>
       </div>
+
     </div>
 
     <div id="seasonInfo" style="margin-top:10px;font-size:0.9em;color:#52665a;"></div>
@@ -500,6 +501,7 @@ function ensureFarmInputs() {
 
     <hr style="border:0;border-top:1px solid #d8e6dc;margin:18px 0;">
 
+    <!-- SOIL PH TEST -->
     <h3 style="margin:0 0 12px;">🧪 Soil pH Test</h3>
 
     <p style="font-size:0.9em;margin:0 0 12px;color:#52665a;">
@@ -537,6 +539,7 @@ function ensureFarmInputs() {
 
     <hr style="border:0;border-top:1px solid #d8e6dc;margin:18px 0;">
 
+    <!-- SOIL TYPE -->
     <h3 style="margin:0 0 10px;">🌍 Indian Soil Type</h3>
 
     <label for="soilTypeSelect" style="display:block;font-weight:600;margin-bottom:6px;">
@@ -553,6 +556,88 @@ function ensureFarmInputs() {
     <p style="font-size:0.85em;margin:8px 0 0;color:#52665a;">
       Select the soil type based on your knowledge or local soil information. This is a farmer input, not a sensor measurement.
     </p>
+
+    <hr style="border:0;border-top:1px solid #d8e6dc;margin:18px 0;">
+
+    <!-- SOIL HEALTH AND TREATMENT ADVISOR -->
+    <section id="soilHealthAdvisor">
+
+      <h3 style="margin:0 0 10px;">🌱 Soil Health & Treatment Advisor</h3>
+
+      <p style="font-size:0.9em;color:#52665a;">
+        Enter additional laboratory soil-test results to understand
+        soil problems and possible corrective measures.
+      </p>
+
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;">
+
+        <div>
+          <label for="soilECInput" style="display:block;font-weight:600;margin-bottom:5px;">
+            Soil EC (dS/m)
+          </label>
+          <input id="soilECInput" type="number" min="0" step="0.01"
+            placeholder="Optional laboratory value"
+            style="width:100%;padding:11px;border:1px solid #b8cdbd;border-radius:8px;box-sizing:border-box;">
+        </div>
+
+        <div>
+          <label for="soilESPInput" style="display:block;font-weight:600;margin-bottom:5px;">
+            ESP (%)
+          </label>
+          <input id="soilESPInput" type="number" min="0" step="0.1"
+            placeholder="Optional laboratory value"
+            style="width:100%;padding:11px;border:1px solid #b8cdbd;border-radius:8px;box-sizing:border-box;">
+        </div>
+
+        <div>
+          <label for="gypsumRequirement" style="display:block;font-weight:600;margin-bottom:5px;">
+            Gypsum requirement (t/ha)
+          </label>
+          <input id="gypsumRequirement" type="number" min="0" step="0.1"
+            placeholder="Laboratory-recommended value"
+            style="width:100%;padding:11px;border:1px solid #b8cdbd;border-radius:8px;box-sizing:border-box;">
+        </div>
+
+      </div>
+
+      <div id="soilTreatmentResult" aria-live="polite"
+        style="margin-top:14px;padding:12px;background:#edf4ee;border-radius:8px;">
+        Enter soil pH and laboratory results to receive preliminary soil treatment guidance.
+      </div>
+
+      <p style="font-size:0.82em;color:#52665a;">
+        Important: pH alone cannot determine gypsum or sulphur dosage.
+        Follow laboratory recommendations before applying soil amendments.
+      </p>
+
+    </section>
+
+    <hr style="border:0;border-top:1px solid #d8e6dc;margin:18px 0;">
+
+    <!-- WEATHER ADVISOR -->
+    <section id="weatherAdvisor">
+
+      <h3 style="margin:0 0 10px;">🌦️ Live Weather & Climate Advisor</h3>
+
+      <p style="font-size:0.9em;color:#52665a;">
+        Check current weather and upcoming conditions at your farm location.
+      </p>
+
+      <div id="weatherStatus" aria-live="polite"
+        style="padding:12px;background:#edf4ee;border-radius:8px;">
+        Waiting for farm location...
+      </div>
+
+      <div id="weatherCurrent" style="margin-top:12px;"></div>
+
+      <div id="weatherForecast" style="margin-top:12px;"></div>
+
+      <p style="font-size:0.82em;color:#52665a;">
+        Forecasts can change. Always check local weather alerts before
+        irrigation, spraying and other farm operations.
+      </p>
+
+    </section>
   `;
 
   cropsContainer.parentNode.insertBefore(panel, cropsContainer);
@@ -588,10 +673,9 @@ function ensureFarmInputs() {
         : null;
     }
 
-    renderPHResult();
     render();
   });
-
+}
   $("phPhoto").addEventListener("change", handlePHPhoto);
 
   // If GPS location was already detected, fill the farm fields.

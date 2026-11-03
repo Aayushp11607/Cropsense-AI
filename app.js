@@ -1,4 +1,3 @@
-
 "use strict";
 
 // =====================================================
@@ -557,60 +556,17 @@ function ensureFarmInputs() {
       Select the soil type based on your knowledge or local soil information. This is a farmer input, not a sensor measurement.
     </p>
 
+    <!-- FIELD SUMMARY RESTORED -->
     <hr style="border:0;border-top:1px solid #d8e6dc;margin:18px 0;">
-
-    <!-- SOIL HEALTH AND TREATMENT ADVISOR -->
-    <section id="soilHealthAdvisor">
-
-      <h3 style="margin:0 0 10px;">🌱 Soil Health & Treatment Advisor</h3>
-
-      <p style="font-size:0.9em;color:#52665a;">
-        Enter additional laboratory soil-test results to understand
-        soil problems and possible corrective measures.
+    <section id="fieldSummarySection">
+      <h3 style="margin:0 0 10px;">📋 Field Summary</h3>
+      <p style="font-size:0.9em;color:#52665a;margin:0 0 12px;">
+        A quick overview of your field conditions, sensor readings and selected farm details.
       </p>
-
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;">
-
-        <div>
-          <label for="soilECInput" style="display:block;font-weight:600;margin-bottom:5px;">
-            Soil EC (dS/m)
-          </label>
-          <input id="soilECInput" type="number" min="0" step="0.01"
-            placeholder="Optional laboratory value"
-            style="width:100%;padding:11px;border:1px solid #b8cdbd;border-radius:8px;box-sizing:border-box;">
-        </div>
-
-        <div>
-          <label for="soilESPInput" style="display:block;font-weight:600;margin-bottom:5px;">
-            ESP (%)
-          </label>
-          <input id="soilESPInput" type="number" min="0" step="0.1"
-            placeholder="Optional laboratory value"
-            style="width:100%;padding:11px;border:1px solid #b8cdbd;border-radius:8px;box-sizing:border-box;">
-        </div>
-
-        <div>
-          <label for="gypsumRequirement" style="display:block;font-weight:600;margin-bottom:5px;">
-            Gypsum requirement (t/ha)
-          </label>
-          <input id="gypsumRequirement" type="number" min="0" step="0.1"
-            placeholder="Laboratory-recommended value"
-            style="width:100%;padding:11px;border:1px solid #b8cdbd;border-radius:8px;box-sizing:border-box;">
-        </div>
-
-      </div>
-
-      <div id="soilTreatmentResult" aria-live="polite"
-        style="margin-top:14px;padding:12px;background:#edf4ee;border-radius:8px;">
-        Enter soil pH and laboratory results to receive preliminary soil treatment guidance.
-      </div>
-
-      <p style="font-size:0.82em;color:#52665a;">
-        Important: pH alone cannot determine gypsum or sulphur dosage.
-        Follow laboratory recommendations before applying soil amendments.
-      </p>
-
+      <div id="fieldSummary" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px;"></div>
     </section>
+
+    <hr style="border:0;border-top:1px solid #d8e6dc;margin:18px 0;">
 
     <hr style="border:0;border-top:1px solid #d8e6dc;margin:18px 0;">
 
@@ -623,9 +579,17 @@ function ensureFarmInputs() {
         Check current weather and upcoming conditions at your farm location.
       </p>
 
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:10px 0;">
+        <button id="refreshWeather" type="button"
+          style="padding:9px 14px;border:0;border-radius:8px;background:#247344;color:white;cursor:pointer;">
+          ↻ Refresh Weather
+        </button>
+        <small style="color:#52665a;">Weather is fetched automatically after GPS location is detected.</small>
+      </div>
+
       <div id="weatherStatus" aria-live="polite"
         style="padding:12px;background:#edf4ee;border-radius:8px;">
-        Waiting for farm location...
+        Waiting for GPS location...
       </div>
 
       <div id="weatherCurrent" style="margin-top:12px;"></div>
@@ -644,21 +608,23 @@ function ensureFarmInputs() {
 
   $("farmState").addEventListener("change", () => {
     selectedState = $("farmState").value;
-    renderSummary();
+    renderFieldSummary();
   });
+  $("farmDistrict").addEventListener("input", renderFieldSummary);
+  $("farmVillage").addEventListener("input", renderFieldSummary);
 
-  $("farmDistrict").addEventListener("input", renderSummary);
-  $("farmVillage").addEventListener("input", renderSummary);
 
   $("farmSeason").addEventListener("change", () => {
     selectedSeason = $("farmSeason").value;
     renderSeasonInfo();
     render();
+    renderFieldSummary();
   });
 
   $("soilTypeSelect").addEventListener("change", () => {
     selectedSoilType = $("soilTypeSelect").value;
     render();
+    renderFieldSummary();
   });
 
   $("soilPHInput").addEventListener("input", () => {
@@ -674,11 +640,18 @@ function ensureFarmInputs() {
     }
 
     render();
+    renderFieldSummary();
   });
-}
   $("phPhoto").addEventListener("change", handlePHPhoto);
+  $("refreshWeather")?.addEventListener("click", () => {
+    if (window.cropSenseLocation) {
+      loadFarmWeather(window.cropSenseLocation);
+    } else {
+      setWeatherStatus("Please detect your farm location first.");
+    }
+  });
 
-  // If GPS location was already detected, fill the farm fields.
+  // If GPS was detected before this panel was created, use it now.
   if (window.cropSenseLocation) {
     applyGPSLocation(window.cropSenseLocation);
   }
@@ -725,11 +698,198 @@ function watchGPSPanel() {
 }
 
 // -----------------------------------------------------
-// 14. GPS LOCATION INTEGRATION
+// 14. GPS LOCATION + LIVE WEATHER INTEGRATION
 // -----------------------------------------------------
+
+let weatherRequestId = 0;
+
+function getCoordinates(location) {
+  if (!location) return null;
+
+  const latitude = Number(
+    location.latitude ?? location.lat ?? location.coords?.latitude
+  );
+  const longitude = Number(
+    location.longitude ?? location.lon ?? location.lng ?? location.coords?.longitude
+  );
+
+  if (
+    !Number.isFinite(latitude) ||
+    !Number.isFinite(longitude) ||
+    latitude < -90 || latitude > 90 ||
+    longitude < -180 || longitude > 180
+  ) {
+    return null;
+  }
+
+  return { latitude, longitude };
+}
+
+function setWeatherStatus(message, isError = false) {
+  const box = $("weatherStatus");
+  if (!box) return;
+  box.textContent = message;
+  box.style.background = isError ? "#fff0ed" : "#edf4ee";
+  box.style.color = isError ? "#9b3525" : "#435448";
+}
+
+function weatherDescription(code) {
+  const descriptions = {
+    0: "Clear sky",
+    1: "Mainly clear",
+    2: "Partly cloudy",
+    3: "Overcast",
+    45: "Fog",
+    48: "Depositing rime fog",
+    51: "Light drizzle",
+    53: "Moderate drizzle",
+    55: "Dense drizzle",
+    56: "Freezing drizzle",
+    57: "Heavy freezing drizzle",
+    61: "Slight rain",
+    63: "Moderate rain",
+    65: "Heavy rain",
+    66: "Freezing rain",
+    67: "Heavy freezing rain",
+    71: "Slight snowfall",
+    73: "Moderate snowfall",
+    75: "Heavy snowfall",
+    77: "Snow grains",
+    80: "Rain showers",
+    81: "Moderate rain showers",
+    82: "Violent rain showers",
+    85: "Snow showers",
+    86: "Heavy snow showers",
+    95: "Thunderstorm",
+    96: "Thunderstorm with hail",
+    99: "Severe thunderstorm with hail"
+  };
+  return descriptions[Number(code)] || "Weather conditions unavailable";
+}
+
+function weatherIcon(code) {
+  code = Number(code);
+  if (code === 0) return "☀️";
+  if ([1, 2].includes(code)) return "🌤️";
+  if ([3, 45, 48].includes(code)) return "☁️";
+  if ([51, 53, 55, 56, 57, 61, 63, 65, 66, 67, 80, 81, 82].includes(code)) return "🌧️";
+  if ([71, 73, 75, 77, 85, 86].includes(code)) return "❄️";
+  if ([95, 96, 99].includes(code)) return "⛈️";
+  return "🌦️";
+}
+
+async function loadFarmWeather(location) {
+  const coords = getCoordinates(location);
+
+  if (!coords) {
+    setWeatherStatus(
+      "GPS location was detected, but its latitude/longitude is missing. Check that gps-location.js sends coordinates.",
+      true
+    );
+    return;
+  }
+
+  const requestId = ++weatherRequestId;
+  setWeatherStatus("Fetching current weather and 5-day forecast for your detected location...");
+
+  const currentBox = $("weatherCurrent");
+  const forecastBox = $("weatherForecast");
+  if (currentBox) currentBox.innerHTML = "";
+  if (forecastBox) forecastBox.innerHTML = "";
+
+  const url = new URL("https://api.open-meteo.com/v1/forecast");
+  url.search = new URLSearchParams({
+    latitude: String(coords.latitude),
+    longitude: String(coords.longitude),
+    current: "temperature_2m,relative_humidity_2m,apparent_temperature,precipitation,weather_code,wind_speed_10m",
+    daily: "weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max",
+    timezone: "auto",
+    forecast_days: "5"
+  }).toString();
+
+  try {
+    const response = await fetch(url.toString());
+    if (!response.ok) throw new Error(`Weather service returned ${response.status}`);
+    const data = await response.json();
+
+    // Ignore an older response if the user has detected a new location.
+    if (requestId !== weatherRequestId) return;
+
+    if (!data.current || !data.daily) {
+      throw new Error("Weather information was incomplete.");
+    }
+
+    const now = data.current;
+    const currentCode = Number(now.weather_code);
+    if (currentBox) {
+      currentBox.innerHTML = `
+        <div style="padding:14px;border:1px solid #d8e6dc;border-radius:12px;background:white;">
+          <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+            <div style="font-size:2.2em;">${weatherIcon(currentCode)}</div>
+            <div>
+              <div style="font-size:1.5em;font-weight:800;color:#203328;">${Number(now.temperature_2m).toFixed(1)}°C</div>
+              <b>${weatherDescription(currentCode)}</b>
+              <div style="font-size:0.82em;color:#64756a;">Feels like ${Number(now.apparent_temperature).toFixed(1)}°C</div>
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(125px,1fr));gap:9px;margin-top:14px;">
+            <div style="padding:10px;background:#f3f7f3;border-radius:8px;">💧 <b>${now.relative_humidity_2m}%</b><br><small>Humidity</small></div>
+            <div style="padding:10px;background:#f3f7f3;border-radius:8px;">🌧️ <b>${Number(now.precipitation).toFixed(1)} mm</b><br><small>Precipitation</small></div>
+            <div style="padding:10px;background:#f3f7f3;border-radius:8px;">💨 <b>${Number(now.wind_speed_10m).toFixed(1)} km/h</b><br><small>Wind speed</small></div>
+          </div>
+          <small style="display:block;margin-top:10px;color:#64756a;">Updated: ${now.time.replace("T", " ")}</small>
+        </div>
+      `;
+    }
+
+    if (forecastBox) {
+      const days = data.daily.time.map((date, index) => ({
+        date,
+        code: data.daily.weather_code[index],
+        max: data.daily.temperature_2m_max[index],
+        min: data.daily.temperature_2m_min[index],
+        rain: data.daily.precipitation_probability_max[index]
+      }));
+
+      forecastBox.innerHTML = `
+        <h4 style="margin:14px 0 8px;">📅 5-Day Weather Forecast</h4>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(135px,1fr));gap:8px;">
+          ${days.map(day => `
+            <div style="padding:11px;border:1px solid #d8e6dc;border-radius:10px;background:white;text-align:center;">
+              <b>${new Date(`${day.date}T12:00:00`).toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" })}</b>
+              <div style="font-size:1.6em;margin:5px 0;">${weatherIcon(day.code)}</div>
+              <small>${weatherDescription(day.code)}</small>
+              <div style="margin-top:6px;font-weight:700;">${Number(day.max).toFixed(0)}° / ${Number(day.min).toFixed(0)}°C</div>
+              <small>🌧️ Rain chance: ${day.rain == null ? "—" : `${day.rain}%`}</small>
+            </div>
+          `).join("")}
+        </div>
+      `;
+    }
+
+    const place = [
+      location.village_or_locality,
+      location.district,
+      location.state
+    ].filter(Boolean).join(", ");
+
+    setWeatherStatus(
+      `Weather loaded for ${place || "your GPS coordinates"} · ${coords.latitude.toFixed(4)}, ${coords.longitude.toFixed(4)}`
+    );
+  } catch (error) {
+    if (requestId !== weatherRequestId) return;
+    console.error("CropSense weather error:", error);
+    setWeatherStatus(
+      "Unable to load weather. Check your internet connection and try Refresh Weather.",
+      true
+    );
+  }
+}
 
 function applyGPSLocation(location) {
   if (!location) return;
+
+  window.cropSenseLocation = location;
 
   const stateInput = $("farmState");
   const districtInput = $("farmDistrict");
@@ -737,9 +897,8 @@ function applyGPSLocation(location) {
 
   if (stateInput && location.state) {
     const match = indianStates.find(
-      state => state.toLowerCase() === location.state.toLowerCase()
+      state => state.toLowerCase() === String(location.state).toLowerCase()
     );
-
     if (match) {
       stateInput.value = match;
       selectedState = match;
@@ -754,7 +913,8 @@ function applyGPSLocation(location) {
     villageInput.value = location.village_or_locality;
   }
 
-  renderSummary();
+  renderFieldSummary();
+  loadFarmWeather(location);
 }
 
 window.addEventListener("cropsense-location-detected", event => {
@@ -1089,83 +1249,47 @@ function renderCrops() {
 }
 
 // -----------------------------------------------------
-// 20. FIELD SUMMARY
+// FIELD SUMMARY
 // -----------------------------------------------------
 
-function renderSummary() {
-  const m = Number(current.moisture_percent);
-  const t = Number(current.temperature);
-  const h = Number(current.humidity);
+function renderFieldSummary() {
+  const box = $("fieldSummary");
+  if (!box) return;
 
+  const moisture = Number(current.moisture_percent);
+  const temperature = Number(current.temperature);
+  const humidity = Number(current.humidity);
+  const savedPoints = points.filter(point => point.saved).length;
   const locationParts = [
     $("farmVillage")?.value.trim(),
     $("farmDistrict")?.value.trim(),
     selectedState
   ].filter(Boolean);
 
-  const summary = [
-    [
-      "💧",
-      "Soil moisture",
-      Number.isFinite(m)
-        ? `${moistureStatus(m)[0]} (${Math.round(m)}% on the sensor's calibrated scale).`
-        : "Waiting for a valid reading."
-    ],
-    [
-      "🌡️",
-      "Temperature",
-      Number.isFinite(t)
-        ? `${t.toFixed(1)}°C air temperature.`
-        : "Waiting for a valid reading."
-    ],
-    [
-      "☁️",
-      "Air humidity",
-      Number.isFinite(h)
-        ? `${h.toFixed(1)}% relative humidity.`
-        : "Waiting for a valid reading."
-    ],
-    [
-      "🧪",
-      "Soil pH",
-      soilPH !== null
-        ? `${soilPH.toFixed(1)} — ${getPHGuidance(soilPH).label}`
-        : "Enter the result from your soil pH test kit."
-    ],
-    [
-      "📍",
-      "Farm location",
-      locationParts.length
-        ? locationParts.join(", ")
-        : "Location not entered."
-    ],
-    [
-      "🌦️",
-      "Cropping season",
-      selectedSeason || "Season not selected."
-    ],
-    [
-      "🌱",
-      "Selected soil type",
-      selectedSoilType || "Soil type not selected."
-    ]
+  const items = [
+    ["💧", "Soil moisture", Number.isFinite(moisture) ? `${moisture.toFixed(0)}%` : "Waiting for sensor"],
+    ["🌡️", "Air temperature", Number.isFinite(temperature) ? `${temperature.toFixed(1)} °C` : "Waiting for sensor"],
+    ["☁️", "Air humidity", Number.isFinite(humidity) ? `${humidity.toFixed(1)}%` : "Waiting for sensor"],
+    ["🧪", "Soil pH", soilPH !== null ? soilPH.toFixed(1) : "Not entered"],
+    ["🌍", "Soil type", selectedSoilType || "Not selected"],
+    ["🌱", "Cropping season", selectedSeason || "Not selected"],
+    ["📍", "Farm location", locationParts.length ? locationParts.join(", ") : "Awaiting GPS / manual entry"],
+    ["📡", "Field scan", `${savedPoints}/4 points recorded${scanComplete ? " · Complete" : ""}`]
   ];
 
-  if (!$("summary")) return;
-
-  $("summary").innerHTML = summary.map(item => `
-    <div class="summary">
-      <span>${item[0]}</span>
-      <div>
-        <b>${item[1]}</b>
-        <p>${item[2]}</p>
+  box.innerHTML = items.map(([icon, label, value]) => `
+    <div style="display:flex;gap:10px;align-items:flex-start;padding:12px;border:1px solid #d8e6dc;border-radius:10px;background:white;min-width:0;">
+      <span style="font-size:1.35em;">${icon}</span>
+      <div style="min-width:0;">
+        <b style="display:block;color:#203328;font-size:0.9em;">${label}</b>
+        <span style="display:block;color:#52665a;font-size:0.88em;overflow-wrap:anywhere;">${value}</span>
       </div>
     </div>
   `).join("");
 }
 
 // -----------------------------------------------------
-// 21. MAIN DASHBOARD
+// 20. MAIN DASHBOARD
 // -----------------------------------------------------
 
 function render() {
@@ -1199,8 +1323,8 @@ function render() {
     `${Math.max(0, Math.min(100, Number.isFinite(h) ? h : 0))}%`;
 
   renderCrops();
-  renderSummary();
   renderPoints();
+  renderFieldSummary();
   renderPHResult();
   renderSeasonInfo();
   renderSuitabilityProgress();
@@ -1408,9 +1532,114 @@ window.addEventListener("cropsense-live-data", event => {
   console.log("CropSense dashboard updated:", current);
 });
 
+
+// -----------------------------------------------------
+// PROJECT INFORMATION — placed after the Contributions section
+// -----------------------------------------------------
+
+function addCropSenseProjectInformation() {
+  if ($("cropSenseProjectInfo")) return;
+
+  const section = document.createElement("section");
+  section.id = "cropSenseProjectInfo";
+  section.style.cssText = `
+    margin:28px 0 18px;
+    padding:24px;
+    border:1px solid #d8e6dc;
+    border-radius:16px;
+    background:linear-gradient(135deg,#f5faf5,#edf5ef);
+    color:#203328;
+    line-height:1.65;
+    box-sizing:border-box;
+  `;
+
+  section.innerHTML = `
+    <div style="max-width:1000px;margin:auto;">
+      <div style="font-size:0.82em;font-weight:800;letter-spacing:1.5px;color:#247344;text-transform:uppercase;">
+        About Our Innovation
+      </div>
+      <h2 style="margin:6px 0 10px;font-size:1.65em;">🌱 CropSense AI — Better Choice, Greener Tomorrow.</h2>
+      <p>
+        <b>CropSense AI</b> is a smart agriculture prototype developed by <b>Team Digital Aura</b>.
+        It is designed to help farmers and new landowners make more informed crop-selection
+        decisions by bringing field observations, soil information and local weather together
+        in one easy-to-use website.
+      </p>
+
+      <h3 style="margin:18px 0 6px;">The problem we want to solve</h3>
+      <p>
+        Choosing a crop only from habit or guesswork can create avoidable risks. A field's
+        soil type, moisture condition, pH, temperature, season and water availability all
+        influence which crops may be worth considering. CropSense AI aims to make these
+        factors easier to view before a farmer makes a decision.
+      </p>
+
+      <h3 style="margin:18px 0 6px;">How CropSense AI works</h3>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px;margin-top:10px;">
+        <div style="padding:13px;background:white;border:1px solid #dce8de;border-radius:10px;">
+          <b>1. Field sensing</b><br>
+          An ESP32-based prototype collects soil-moisture sensor readings and DHT22 air temperature and humidity.
+        </div>
+        <div style="padding:13px;background:white;border:1px solid #dce8de;border-radius:10px;">
+          <b>2. Live data transfer</b><br>
+          Sensor readings are sent to Firebase Realtime Database and displayed on the website.
+        </div>
+        <div style="padding:13px;background:white;border:1px solid #dce8de;border-radius:10px;">
+          <b>3. Farm information</b><br>
+          The user can enter soil type, manually measured pH and cropping season, and allow GPS to identify the location.
+        </div>
+        <div style="padding:13px;background:white;border:1px solid #dce8de;border-radius:10px;">
+          <b>4. Weather and crop guidance</b><br>
+          Local weather forecasts and preliminary crop-screening results help users compare field conditions.
+        </div>
+      </div>
+
+      <h3 style="margin:18px 0 6px;">What makes the project useful?</h3>
+      <ul style="padding-left:22px;margin:6px 0;">
+        <li>Combines field sensor readings with farmer-provided soil and season information.</li>
+        <li>Uses a four-point scan to compare readings from different spots in the field.</li>
+        <li>Displays live weather and a five-day forecast after location detection.</li>
+        <li>Presents crop options in a simple, accessible dashboard.</li>
+        <li>Encourages data-informed farming decisions rather than relying only on guesswork.</li>
+      </ul>
+
+      <h3 style="margin:18px 0 6px;">Our vision</h3>
+      <p>
+        Our vision is to make practical agricultural technology easier to understand and
+        accessible to more farmers. We hope to develop CropSense AI further with better
+        field validation, more reliable crop data and guidance suited to local agricultural
+        conditions.
+      </p>
+
+      <div style="margin-top:16px;padding:12px 14px;border-left:4px solid #247344;background:white;border-radius:8px;">
+        <b>Team Digital Aura</b><br>
+        <span style="color:#247344;font-weight:700;">Better Choice, Greener Tomorrow.</span>
+      </div>
+    </div>
+  `;
+
+  const contribution = document.querySelector(
+    '[id*="contribution" i], [class*="contribution" i], #contributors, .contributors'
+  );
+  const footer = document.querySelector("footer");
+
+  if (contribution) {
+    contribution.insertAdjacentElement("afterend", section);
+  } else if (footer && footer.parentNode) {
+    footer.parentNode.insertBefore(section, footer);
+  } else {
+    document.body.appendChild(section);
+  }
+}
+
 // -----------------------------------------------------
 // 30. INITIAL DISPLAY
 // -----------------------------------------------------
 
 render();
 watchGPSPanel();
+addCropSenseProjectInformation();
+
+if (window.cropSenseLocation) {
+  applyGPSLocation(window.cropSenseLocation);
+}

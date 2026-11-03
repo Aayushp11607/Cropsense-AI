@@ -1,5 +1,4 @@
 
-"use strict";
 
 // =====================================================
 // CROPSENSE AI — MAIN WEBSITE APPLICATION

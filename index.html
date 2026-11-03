@@ -14,20 +14,49 @@
   <title>CropSense AI | Better Choice, Greener Tomorrow</title>
 
   <link rel="stylesheet" href="style.css">
+
+  <style>
+    /* Official CropSense AI branding */
+    .brand-logo {
+      display: block;
+      width: 110px;
+      height: 76px;
+      object-fit: contain;
+      flex-shrink: 0;
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    @media (max-width: 600px) {
+      .brand-logo {
+        width: 82px;
+        height: 60px;
+      }
+
+      .topbar {
+        gap: 10px;
+      }
+    }
+  </style>
 </head>
 
 <body>
 
-  <!-- HEADER -->
+  <!-- HEADER WITH OFFICIAL LOGO -->
   <header class="topbar">
-    <div class="logo">🌱</div>
 
-    <div>
-      <h1>CropSense <span>AI</span></h1>
-      <p>Better Choice, Greener Tomorrow.</p>
-    </div>
+    <img
+      src="cropsense-logo.png"
+      alt="CropSense AI - Better Choice, Greener Tomorrow"
+      class="brand-logo"
+    >
 
     <span id="status" class="status">Demo data</span>
+
   </header>
 
   <main class="wrap">
@@ -200,7 +229,7 @@
 
     </section>
 
-    <!-- FIELD SUMMARY AFTER ALL CROP SUGGESTIONS -->
+    <!-- FIELD SUMMARY AND PLANT CARE -->
     <section class="columns">
 
       <article class="panel">
@@ -259,64 +288,6 @@
         </div>
 
       </article>
-
-    </section>
-
-    <!-- DEVICE CONNECTION -->
-    <section class="panel connection">
-
-      <small>DEVICE CONNECTION</small>
-      <h2>Connect your ESP32</h2>
-
-      <p class="muted">
-        Your ESP32 sends sensor readings to Firebase. You can also
-        connect directly to its local data endpoint when your browser
-        and ESP32 can communicate over the network. Direct access may
-        require correct CORS settings.
-      </p>
-
-      <div class="connect">
-
-        <label>
-          ESP32 data URL
-          <input
-            id="deviceUrl"
-            type="url"
-            placeholder="http://192.168.4.1/data"
-          >
-        </label>
-
-        <button id="connect" type="button">
-          Connect &amp; Refresh
-        </button>
-
-        <button id="demo" class="secondary" type="button">
-          Use Demo Data
-        </button>
-
-      </div>
-
-      <p id="deviceMessage" class="helper">
-        Waiting for a live Firebase reading or direct ESP32 connection.
-      </p>
-
-      <details>
-        <summary>Expected ESP32 data format</summary>
-
-        <pre>{
-  "moisture_raw": 2470,
-  "moisture_percent": 35,
-  "temperature": 27.8,
-  "humidity": 54.2,
-  "point": "A"
-}</pre>
-
-        <p class="helper">
-          Direct connection requires the ESP32 firmware to provide
-          a JSON endpoint at the entered URL. Firebase live updates
-          are handled separately by firebase-live.js.
-        </p>
-      </details>
 
     </section>
 
@@ -379,10 +350,6 @@
             and understand field readings.
           </li>
           <li>
-            Integrated GPS-based weather forecasting to consider
-            upcoming temperature and rainfall conditions in crop screening.
-          </li>
-          <li>
             Encouraged informed farming decisions using field data
             and local agricultural guidance.
           </li>
@@ -404,13 +371,13 @@
 
   </main>
 
-  <!-- GPS location detection -->
+  <!-- GPS LOCATION -->
   <script src="gps-location.js"></script>
 
-  <!-- Dashboard JavaScript -->
+  <!-- DASHBOARD JAVASCRIPT -->
   <script src="app.js"></script>
 
-  <!-- Firebase live sensor updates -->
+  <!-- FIREBASE LIVE SENSOR UPDATES -->
   <script type="module" src="firebase-live.js"></script>
 
 </body>

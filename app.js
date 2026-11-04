@@ -1568,7 +1568,7 @@ $("resetPoints").addEventListener("click", () => {
 // 26. DEMO MODE
 // -----------------------------------------------------
 
-$("demo").addEventListener("click", () => {
+$("demo")?.addEventListener("click", () => {
   current = { ...demo };
 
   $("status").textContent = "Demo data";
